@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import * as http from 'http';
 import { ConfigHandler } from './configHandler';
 import { ScriptModifier } from './scriptModifier';
 import { StatusMonitor } from './statusMonitor';
@@ -11,6 +12,45 @@ export function activate(context: vscode.ExtensionContext) {
     const outputChannel = vscode.window.createOutputChannel('DevMirror');
     const statusMonitor = new StatusMonitor();
     const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
+
+    // Start HTTP server for IPC with CLI
+    const server = http.createServer((req, res) => {
+        if (req.method === 'POST' && req.url === '/activate') {
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+                try {
+                    const args = JSON.parse(body);
+                    console.log('DevMirror activation received:', args);
+                    statusMonitor.activate(args);
+                    setupFileWatchers();
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'activated' }));
+                } catch (error) {
+                    console.error('Failed to process activation:', error);
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid request' }));
+                }
+            });
+        } else {
+            res.writeHead(404);
+            res.end();
+        }
+    });
+
+    // Try to start server on port 37240 (arbitrary but consistent)
+    const PORT = 37240;
+    server.listen(PORT, '127.0.0.1', () => {
+        console.log(`DevMirror IPC server listening on port ${PORT}`);
+    });
+
+    server.on('error', (err: any) => {
+        if (err.code === 'EADDRINUSE') {
+            console.log(`Port ${PORT} already in use - DevMirror might already be running`);
+        } else {
+            console.error('DevMirror IPC server error:', err);
+        }
+    });
 
     // Configuration for auto-refresh and auto-fold
     const config = vscode.workspace.getConfiguration('devmirror');
@@ -26,11 +66,38 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // Watch for log file changes and apply refresh/folding with debouncing
-    const logWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/*.log');
-    const currentLogWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/current.log');
-
+    // File watching with nodemon-style approach
+    let fileWatchers: vscode.FileSystemWatcher[] = [];
     let refreshTimeout: NodeJS.Timeout | null = null;
+    let lastLogPath: string | null = null;
+
+    // Function to set up file watchers for active log
+    const setupFileWatchers = () => {
+        // Clean up existing watchers
+        fileWatchers.forEach(w => w.dispose());
+        fileWatchers = [];
+
+        const logPath = statusMonitor.getCurrentLogPath();
+        if (!logPath) return;
+
+        // Only set up watcher if the log path changed
+        if (logPath === lastLogPath) return;
+        lastLogPath = logPath;
+
+        // Watch the specific log file
+        const logWatcher = vscode.workspace.createFileSystemWatcher(logPath);
+        fileWatchers.push(logWatcher);
+
+        // Also watch the directory for new log files
+        const dirPath = path.dirname(logPath);
+        const dirWatcher = vscode.workspace.createFileSystemWatcher(path.join(dirPath, '*.log'));
+        fileWatchers.push(dirWatcher);
+
+        logWatcher.onDidChange(uri => refreshAndFold(uri));
+        dirWatcher.onDidCreate(uri => refreshAndFold(uri));
+    };
+
+    // File watcher setup is now triggered by the activate command
 
     const refreshAndFold = async (uri: vscode.Uri) => {
         if (!autoRefresh) return;
@@ -111,13 +178,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    logWatcher.onDidChange(refreshAndFold);
-    currentLogWatcher.onDidChange(refreshAndFold);
-    logWatcher.onDidCreate(refreshAndFold);
-    currentLogWatcher.onDidCreate(refreshAndFold);
-
-    context.subscriptions.push(logWatcher);
-    context.subscriptions.push(currentLogWatcher);
+    // Initial setup
+    setupFileWatchers();
 
     // Setup command
     const setupCommand = vscode.commands.registerCommand('devmirror.setup', async () => {
@@ -196,12 +258,10 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Show logs command
     const showLogsCommand = vscode.commands.registerCommand('devmirror.showLogs', async () => {
-        // Get the current workspace from status monitor
-        const currentWorkspace = statusMonitor.getCurrentWorkspacePath();
+        // Get the current log path from status monitor
+        const logPath = statusMonitor.getCurrentLogPath();
 
-        if (currentWorkspace) {
-            // Use the workspace that's currently being monitored
-            const logPath = path.join(currentWorkspace, 'devmirror-logs', 'current.log');
+        if (logPath) {
             const uri = vscode.Uri.file(logPath);
 
             try {
@@ -281,6 +341,10 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(openSettingsCommand);
     context.subscriptions.push(outputChannel);
     context.subscriptions.push(statusMonitor);
+    context.subscriptions.push(new vscode.Disposable(() => {
+        fileWatchers.forEach(w => w.dispose());
+        server.close();
+    }));
 }
 
 export function deactivate() {}

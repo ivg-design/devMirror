@@ -5,6 +5,7 @@ import { CEFBridge } from './cefBridge';
 import { ConfigHandler, DevMirrorConfig } from './configHandler';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as http from 'http';
 
 async function main() {
     console.log('╔════════════════════════════════════════╗');
@@ -43,49 +44,76 @@ async function main() {
         manager = new CDPManager();
     }
 
-    // Write a status file so VS Code extension can detect we're running
-    const statusFile = path.join(config.outputDir, '.devmirror-status.json');
-    const writeStatus = () => {
-        try {
-            fs.writeFileSync(statusFile, JSON.stringify({
-                pid: process.pid,
-                startTime: Date.now(),
-                url: config.url
-            }));
-        } catch {}
-    };
+    // Get the package path from environment variable
+    const packagePath = process.env.DEVMIRROR_PKG_PATH || process.cwd();
 
     // Create output dir if needed
     if (!fs.existsSync(config.outputDir)) {
         fs.mkdirSync(config.outputDir, { recursive: true });
     }
 
-    writeStatus();
+    // Send activation message to VS Code extension via HTTP
+    const activateVSCode = () => {
+        const data = JSON.stringify({
+            path: packagePath,
+            pid: process.pid,
+            url: config.url,
+            logDir: path.resolve(config.outputDir)
+        });
 
-    // Update status file periodically
-    const statusInterval = setInterval(writeStatus, 1000);
+        const options = {
+            hostname: '127.0.0.1',
+            port: 37240,
+            path: '/activate',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(data)
+            },
+            timeout: 2000
+        };
+
+        const req = http.request(options, (res) => {
+            if (res.statusCode === 200) {
+                console.log('✅ VS Code extension activated');
+            } else {
+                console.log('📝 VS Code extension activation failed (status:', res.statusCode, ')');
+            }
+        });
+
+        req.on('error', (error) => {
+            if ((error as any).code === 'ECONNREFUSED') {
+                console.log('📝 VS Code extension not responding (VS Code might not be running)');
+            } else {
+                console.log('📝 VS Code extension notification failed:', error.message);
+            }
+        });
+
+        req.on('timeout', () => {
+            req.destroy();
+            console.log('📝 VS Code extension notification timed out');
+        });
+
+        req.write(data);
+        req.end();
+    };
+
+    activateVSCode();
 
     try {
         await manager.start(config);
     } catch (error) {
         console.error('❌ Failed to start DevMirror:', error);
-        clearInterval(statusInterval);
-        // Clean up status file on error
-        try { fs.unlinkSync(statusFile); } catch {}
         process.exit(1);
     }
 
     process.on('SIGINT', async () => {
         console.log('\n\n🛑 Shutting down DevMirror...');
-        clearInterval(statusInterval);
-        try { fs.unlinkSync(statusFile); } catch {}
         await manager.stop();
         process.exit(0);
     });
 
     process.on('SIGTERM', async () => {
-        clearInterval(statusInterval);
-        try { fs.unlinkSync(statusFile); } catch {}
         await manager.stop();
         process.exit(0);
     });

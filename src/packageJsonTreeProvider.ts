@@ -144,7 +144,8 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 return;
             }
 
-            packageJson.scripts[mirrorName] = `concurrently "npx devmirror-cli" "${originalCommand}"`;
+            // Pass the package.json directory as an environment variable
+            packageJson.scripts[mirrorName] = `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "npx devmirror-cli" "${originalCommand}"`;
 
             await fs.writeFile(item.resourcePath, JSON.stringify(packageJson, null, 2), 'utf8');
 

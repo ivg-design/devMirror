@@ -2,6 +2,37 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.1] - 2025-09-20
+
+### Fixed
+- Package size reporting issue
+- Verified HTTP IPC implementation working correctly
+
+## [0.4.0] - 2025-09-20
+
+### Changed
+- **MAJOR ARCHITECTURE CHANGE**: Replaced file-based status system with proper HTTP IPC
+- Extension runs local HTTP server on port 37240 for CLI communication
+- CLI sends activation data via HTTP POST request to extension
+- Status bar activation triggered by HTTP message with path/PID data
+- Simplified statusMonitor to use PID-based process monitoring (reduced from 249 to 173 lines)
+- Removed recursive directory scanning for status files
+- Improved performance by eliminating constant file I/O operations
+
+### Fixed
+- Status files no longer persist after process crashes
+- Eliminated cleanup issues with `.devmirror-status.json` files
+- Fixed auto-refresh and auto-fold functionality with proper file watching
+- Resolved settings visibility issues in VS Code
+- No more stale status indicators
+
+### Improved
+- Cleaner process lifecycle management
+- Instant status bar activation/deactivation
+- More reliable process state detection via PID monitoring
+- Direct communication between CLI and VS Code extension
+- Reduced system overhead (no more 1-second status file writes)
+
 ## [0.3.8] - 2025-09-20
 
 ### Added

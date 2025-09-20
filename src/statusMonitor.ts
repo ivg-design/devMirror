@@ -1,17 +1,21 @@
 import * as vscode from 'vscode';
-import * as fs from 'fs';
 import * as path from 'path';
+
+interface ActiveSession {
+    path: string;
+    pid: number;
+    url: string;
+    logDir: string;
+    startTime: number;
+    logCount: number;
+    lastSize: number;
+}
 
 export class StatusMonitor {
     private statusBarItem: vscode.StatusBarItem;
-    private logCount: number = 0;
-    private startTime: Date | null = null;
+    private activeSession: ActiveSession | null = null;
     private updateInterval: NodeJS.Timeout | null = null;
-    private logFilePath: string | null = null;
-    private lastSize: number = 0;
-    private watchInterval: NodeJS.Timeout | null = null;
-    private currentWorkspacePath: string | null = null;
-    private isRunning: boolean = false;
+    private pidCheckInterval: NodeJS.Timeout | null = null;
 
     constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
@@ -21,117 +25,83 @@ export class StatusMonitor {
         this.statusBarItem.command = 'devmirror.showLogs';
         this.statusBarItem.text = 'DevMirror';
         this.statusBarItem.tooltip = 'DevMirror - Click to view logs';
-        this.statusBarItem.show();  // Always show the status bar
-
-        // Start watching for CLI instances
-        this.startWatching();
+        this.statusBarItem.hide(); // Hide by default
     }
 
-    private startWatching(): void {
-        // Check every 1 second for CLI status files (reduced for faster response)
-        this.watchInterval = setInterval(() => {
-            this.checkForCLIInstances();
+    activate(args: { path: string; pid: number; url: string; logDir: string }): void {
+        // If we already have an active session with the same path, just update the PID
+        if (this.activeSession && this.activeSession.path === args.path) {
+            this.activeSession.pid = args.pid;
+            console.log(`Updated DevMirror session for ${args.path} with PID ${args.pid}`);
+            return;
+        }
+
+        // Set up new session
+        this.activeSession = {
+            path: args.path,
+            pid: args.pid,
+            url: args.url,
+            logDir: args.logDir,
+            startTime: Date.now(),
+            logCount: 0,
+            lastSize: 0
+        };
+
+        console.log(`DevMirror activated for ${args.path} with PID ${args.pid}`);
+
+        // Start monitoring
+        this.startMonitoring();
+    }
+
+    private startMonitoring(): void {
+        if (!this.activeSession) return;
+
+        // Clear any existing intervals
+        this.stopMonitoring();
+
+        // Update status bar every second
+        this.updateInterval = setInterval(() => {
+            this.updateStatus();
         }, 1000);
 
-        // Check immediately
-        this.checkForCLIInstances();
-    }
-
-    private async checkForCLIInstances(): Promise<void> {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) return;
-
-        let foundActive = false;
-        for (const folder of workspaceFolders) {
-            const statusPath = path.join(folder.uri.fsPath, 'devmirror-logs', '.devmirror-status.json');
-            try {
-                const stats = fs.statSync(statusPath);
-                // Check if file is recent (updated in last 3 seconds for faster detection)
-                if (Date.now() - stats.mtimeMs < 3000) {
-                    const statusData = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
-                    foundActive = true;
-
-                    // Start monitoring if not already running for this workspace
-                    if (!this.isRunning || this.currentWorkspacePath !== folder.uri.fsPath) {
-                        this.startFromCLI(folder.uri.fsPath, statusData.startTime);
-                    }
-                    break;
-                }
-            } catch (error) {
-                // Status file doesn't exist or is old
-                console.log('Error checking status file:', error);
+        // Check if process is still running every 2 seconds
+        this.pidCheckInterval = setInterval(() => {
+            if (this.activeSession && !this.isProcessRunning(this.activeSession.pid)) {
+                console.log(`Process ${this.activeSession.pid} has stopped`);
+                this.stop();
             }
-        }
+        }, 2000);
 
-        // No active CLI instances found
-        if (!foundActive && this.updateInterval) {
-            this.stop();
-        }
-    }
-
-    private startFromCLI(workspacePath: string, startTimeMs: number): void {
-        this.startTime = new Date(startTimeMs);
-        this.logCount = 0;
-        this.lastSize = 0;
-        this.currentWorkspacePath = workspacePath;
-        this.isRunning = true;
-
-        const logDir = path.join(workspacePath, 'devmirror-logs');
-        const currentLogPath = path.join(logDir, 'current.log');
-        this.logFilePath = currentLogPath;
-
-        this.statusBarItem.text = '🟢 DevMirror: Starting...';
+        // Show the status bar
         this.statusBarItem.show();
-
-        // Clear any existing interval
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-        }
-
-        // Update every second
-        this.updateInterval = setInterval(() => {
-            this.updateStatus();
-        }, 1000);
-
         this.updateStatus();
     }
 
-    start(workspacePath: string): void {
-        this.startTime = new Date();
-        this.logCount = 0;
-        this.lastSize = 0;
-        this.currentWorkspacePath = workspacePath;
-        this.isRunning = true;
-
-        const logDir = path.join(workspacePath, 'devmirror-logs');
-        const currentLogPath = path.join(logDir, 'current.log');
-        this.logFilePath = currentLogPath;
-
-        this.statusBarItem.text = '🟢 DevMirror: Starting...';
-        this.statusBarItem.show();
-
-        // Clear any existing interval
+    private stopMonitoring(): void {
         if (this.updateInterval) {
             clearInterval(this.updateInterval);
+            this.updateInterval = null;
         }
-
-        // Update every second
-        this.updateInterval = setInterval(() => {
-            this.updateStatus();
-        }, 1000);
-
-        this.updateStatus();
+        if (this.pidCheckInterval) {
+            clearInterval(this.pidCheckInterval);
+            this.pidCheckInterval = null;
+        }
     }
 
-    getCurrentWorkspacePath(): string | null {
-        return this.currentWorkspacePath;
+    private isProcessRunning(pid: number): boolean {
+        try {
+            // Sending signal 0 checks if process exists without killing it
+            process.kill(pid, 0);
+            return true;
+        } catch {
+            return false;
+        }
     }
 
     private updateStatus(): void {
-        if (!this.startTime || !this.logFilePath) return;
+        if (!this.activeSession) return;
 
-        // Calculate elapsed time
-        const elapsed = Date.now() - this.startTime.getTime();
+        const elapsed = Date.now() - this.activeSession.startTime;
         const hours = Math.floor(elapsed / 3600000);
         const minutes = Math.floor((elapsed % 3600000) / 60000);
         const seconds = Math.floor((elapsed % 60000) / 1000);
@@ -144,45 +114,60 @@ export class StatusMonitor {
 
         // Count log lines
         try {
-            if (fs.existsSync(this.logFilePath)) {
-                const stats = fs.statSync(this.logFilePath);
-                if (stats.size !== this.lastSize) {
-                    const content = fs.readFileSync(this.logFilePath, 'utf8');
-                    const lines = content.split('\n').filter(line => line.trim());
+            const fs = require('fs');
+            const logPath = path.join(this.activeSession.logDir, 'current.log');
+
+            if (fs.existsSync(logPath)) {
+                const stats = fs.statSync(logPath);
+                if (stats.size !== this.activeSession.lastSize) {
+                    const content = fs.readFileSync(logPath, 'utf8');
+                    const lines = content.split('\n').filter((line: string) => line.trim());
                     // Count actual log entries (lines starting with [)
-                    this.logCount = lines.filter(line => line.startsWith('[')).length;
-                    this.lastSize = stats.size;
+                    this.activeSession.logCount = lines.filter((line: string) => line.startsWith('[')).length;
+                    this.activeSession.lastSize = stats.size;
                 }
             }
         } catch (error) {
             // Ignore errors when reading log file
         }
 
-        this.statusBarItem.text = `🟢 DevMirror | ${this.logCount} logs | ${timeString}`;
-        this.statusBarItem.tooltip = `DevMirror Active\nWorkspace: ${path.basename(this.currentWorkspacePath || '')}\nLogs: ${this.logCount}\nRunning: ${timeString}\nClick to open log file`;
+        // Show which package is active
+        const packageName = path.basename(this.activeSession.path);
+
+        this.statusBarItem.text = `🟢 DevMirror | ${packageName} | ${this.activeSession.logCount} logs | ${timeString}`;
+        this.statusBarItem.tooltip = `DevMirror Active
+Package: ${this.activeSession.path}
+URL: ${this.activeSession.url}
+PID: ${this.activeSession.pid}
+Logs: ${this.activeSession.logCount}
+Running: ${timeString}
+Click to open log file`;
     }
 
     stop(): void {
-        if (this.updateInterval) {
-            clearInterval(this.updateInterval);
-            this.updateInterval = null;
-        }
+        this.stopMonitoring();
+        this.statusBarItem.hide();
+        this.activeSession = null;
+        console.log('DevMirror stopped');
+    }
 
-        this.statusBarItem.text = 'DevMirror';
-        this.statusBarItem.tooltip = 'DevMirror - Click to start capture';
-        this.statusBarItem.show();
-        this.startTime = null;
-        this.logCount = 0;
-        this.currentWorkspacePath = null;
-        this.isRunning = false;
+    start(workspacePath: string): void {
+        // This is called when manually starting from command
+        // In the new architecture, activation happens via the activate command
+        console.log('Manual start requested for:', workspacePath);
+    }
+
+    getCurrentLogPath(): string | null {
+        if (!this.activeSession) return null;
+        return path.join(this.activeSession.logDir, 'current.log');
+    }
+
+    getCurrentWorkspacePath(): string | null {
+        return this.activeSession?.path || null;
     }
 
     dispose(): void {
         this.stop();
-        if (this.watchInterval) {
-            clearInterval(this.watchInterval);
-            this.watchInterval = null;
-        }
         this.statusBarItem.dispose();
     }
 }

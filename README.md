@@ -2,15 +2,15 @@
 
 **Capture 100% of browser console output using Chrome DevTools Protocol with Puppeteer**
 
-[![Version](https://img.shields.io/badge/version-0.3.8-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.1-blue.svg)](CHANGELOG.md)
 [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE.txt)
 
 DevMirror is a production-ready VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## 🚀 Latest Release: v0.3.8
+## 🚀 Latest Release: v0.4.1
 
-Added configurable auto-refresh and auto-fold settings, improved status bar response time, fixed active editor detection, and better multi-workspace support. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+**Major Architecture Improvement**: Replaced file-based status system with proper HTTP IPC. The extension now runs a local HTTP server for direct CLI communication, eliminating status file cleanup issues and improving performance. PID-based process monitoring ensures accurate status tracking. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Features
 
@@ -226,12 +226,20 @@ Change your dev server port in `devmirror.config.json`:
 }
 ```
 
+## Technical Architecture
+
+- **HTTP IPC Communication** - Extension runs local server on port 37240 for CLI messaging
+- **PID-Based Monitoring** - Direct process tracking ensures accurate status detection
+- **No Status Files** - Clean architecture with no temporary files to manage
+- **Direct Activation** - CLI sends path/PID data via HTTP POST for instant activation
+
 ## Performance
 
 - **Minimal overhead** - Async log writing
 - **Smart throttling** - Prevents infinite loops from flooding
 - **Automatic deduplication** - Repeated messages consolidated
 - **File rotation** - Prevents huge log files
+- **Zero file polling** - HTTP-based activation eliminates constant file I/O
 
 ## Privacy & Security
 

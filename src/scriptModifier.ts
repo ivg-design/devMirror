@@ -35,8 +35,10 @@ export class ScriptModifier {
                 const originalScript = packageJson.scripts[name];
 
                 if (!packageJson.scripts[mirrorName]) {
+                    // Pass the package.json directory as an environment variable
+                    const packageDir = path.dirname(this.packageJsonPath);
                     packageJson.scripts[mirrorName] =
-                        `concurrently "npx devmirror-cli" "${originalScript}"`;
+                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "npx devmirror-cli" "${originalScript}"`;
                     modified = true;
                     console.log(`Added mirror script: ${mirrorName}`);
                 }
