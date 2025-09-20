@@ -154,13 +154,16 @@ export function activate(context: vscode.ExtensionContext) {
                 preserveFocus: false
             });
 
-            // Turn off word wrap for this editor
-            await vscode.commands.executeCommand('editor.action.toggleWordWrap');
-
-            // Apply folding to collapse console lines
+            // Apply word wrap and folding to collapse console lines
             // Need to wait for the editor to be fully ready
             setTimeout(async () => {
                 if (editor && editor.document.uri.fsPath === logPath) {
+                    // Check current word wrap state and disable if enabled
+                    const config = vscode.workspace.getConfiguration('editor', doc.uri);
+                    const wordWrap = config.get('wordWrap');
+                    if (wordWrap !== 'off') {
+                        await vscode.commands.executeCommand('editor.action.toggleWordWrap');
+                    }
                     await vscode.commands.executeCommand('editor.foldAll');
                 }
             }, 200);
