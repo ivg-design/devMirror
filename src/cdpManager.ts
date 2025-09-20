@@ -178,22 +178,12 @@ export class CDPManager {
 
         await this.client.send('Runtime.enable');
         await this.client.send('Network.enable');
-        await this.client.send('Log.enable');
+        // Don't enable Log domain - causes duplicate console events
+        // await this.client.send('Log.enable');
         await this.client.send('Security.enable');
         await this.client.send('Page.enable');
 
-        this.client.on('Runtime.consoleAPICalled', (event: any) => {
-            this.handleConsoleMessage(event);
-        });
-
-        this.client.on('Runtime.exceptionThrown', (event: any) => {
-            this.logWriter.write({
-                type: 'error',
-                message: event.exceptionDetails.text || 'Uncaught exception',
-                stack: event.exceptionDetails.stackTrace,
-                timestamp: Date.now()
-            });
-        });
+        // Removed duplicate handlers - using universal capture in CEF mode instead
 
         this.client.on('Network.loadingFailed', (event: any) => {
             const errorText = event.errorText || 'Unknown error';
@@ -703,6 +693,16 @@ export class CDPManager {
                 const args = params.args || [];
                 const type = params.type || 'log';
 
+                // Extract source location if available
+                let source = '';
+                if (params.stackTrace?.callFrames?.[0]) {
+                    const frame = params.stackTrace.callFrames[0];
+                    const fileName = frame.url ? frame.url.split('/').pop() : '';
+                    if (fileName && frame.lineNumber) {
+                        source = `[${fileName}:${frame.lineNumber}] `;
+                    }
+                }
+
                 // Convert all arguments to strings - synchronously
                 const message = args.map((arg: any) => {
                     // Handle primitive values
@@ -735,7 +735,7 @@ export class CDPManager {
                 this.logWriter.write({
                     type: 'console',
                     method: type,
-                    message: message,
+                    message: source + message,
                     timestamp: Date.now()
                 });
 
@@ -926,12 +926,7 @@ export class CDPManager {
                                 this.captureConsoleEvent(message.method, message.params);
                             }
 
-                            // Also call specific handlers if registered (for backwards compatibility)
-                            if (this.client._eventHandlers[message.method]) {
-                                this.client._eventHandlers[message.method].forEach((handler: Function) => {
-                                    handler(message.params);
-                                });
-                            }
+                            // Don't call other handlers - we're capturing everything here
                         }
                     } catch (e) {
                         console.log('   Error parsing CDP message:', e);
@@ -1088,9 +1083,10 @@ export class CDPManager {
 
                 // NOW enable the CDP domains
                 console.log('   Enabling CDP domains...');
-                await this.client.send('Runtime.enable');
-                await this.client.send('Console.enable');
-                await this.client.send('Log.enable');
+                await this.client.send('Runtime.enable');  // This gives us Runtime.consoleAPICalled with stackTrace
+                // DON'T enable Console.enable or Log.enable - they send duplicate events!
+                // await this.client.send('Console.enable');  // Would send Console.messageAdded (duplicate)
+                // await this.client.send('Log.enable');      // Would send Log.entryAdded (duplicate)
                 await this.client.send('Network.enable');
                 await this.client.send('Page.enable');
 

@@ -2,6 +2,29 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.19] - 2025-09-20
+
+### Fixed
+- **ROOT CAUSE of Duplicates Found**: Multiple CDP domains were sending the same console events
+- Disabled Console.enable and Log.enable domains - only Runtime.enable needed
+- Runtime.consoleAPICalled provides the most complete info including stackTrace
+- No more duplicate log entries!
+
+### Improved
+- Cleaner console capture with single event source
+- Better performance with fewer CDP domains enabled
+
+## [0.4.18] - 2025-09-20
+
+### Fixed
+- **Duplicate Log Entries**: Removed duplicate event handlers that were causing double logging
+- **Missing Source Information**: Now captures file name and line numbers from stackTrace
+- Disabled old CDP handlers when using universal capture to prevent duplicates
+
+### Improved
+- Source location now shown as [filename:line] when available
+- Cleaner log output without duplication
+
 ## [0.4.17] - 2025-09-20
 
 ### Reverted
