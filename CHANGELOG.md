@@ -2,6 +2,47 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.3.5] - 2025-09-20
+
+### Fixed
+- DevMirror Scripts panel now uses dynamic npx devmirror-cli wrapper
+- Status bar monitoring now properly shows log count and session timer
+- Log viewer opens in active tab instead of beside panel
+- Word wrap automatically disabled when viewing logs
+- Improved log folding with better detection on file open
+- Status monitor more reliably detects running CLI instances
+
+## [0.3.4] - 2025-01-20
+
+### Fixed
+- Status bar now shows immediately when extension activates
+- Fixed log folding by watching all .log files in devmirror-logs
+- Added multiple file watchers for better folding detection
+- Folding now applies to any open log file in devmirror-logs directory
+
+## [0.3.3] - 2025-01-20
+
+### Added
+- Dynamic CLI wrapper that automatically finds the latest DevMirror extension version
+- Scripts now use `npx devmirror-cli` instead of hard-coded paths
+- No more manual updates needed when extension is upgraded
+
+### Fixed
+- Extension will now work correctly after updates without modifying package.json
+
+## [0.3.2] - 2025-01-20
+
+### Fixed
+- Fixed puppeteer-core loading to check project directory first before failing
+- CEFBridge now uses dynamic puppeteer loading like CDPManager
+
+## [0.3.1] - 2025-01-20
+
+### Fixed
+- Timestamp format now uses local time correctly without microseconds
+- Fixed Chrome DevTools timestamp multiplication bug causing invalid dates
+- README accuracy: clarified use of Puppeteer/Chromium instead of Chrome
+
 ## [0.3.0] - 2025-01-20
 
 ### Added

@@ -11,6 +11,9 @@ export class ScriptModifier {
 
     async addMirrorScripts(): Promise<void> {
         try {
+            // First, install the wrapper script to the project
+            await this.installWrapper();
+
             const content = await fs.readFile(this.packageJsonPath, 'utf8');
             const packageJson = JSON.parse(content);
 
@@ -18,20 +21,8 @@ export class ScriptModifier {
                 packageJson.scripts = {};
             }
 
-            // Get extension path - try multiple possible IDs
-            const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
-                                  vscode.extensions.getExtension('devmirror')?.extensionPath ||
-                                  vscode.extensions.getExtension('unknown.devmirror')?.extensionPath ||
-                                  vscode.extensions.getExtension('undefined_publisher.devmirror')?.extensionPath;
-
-            if (!extensionPath) {
-                // List all extensions to debug
-                const allExtensions = vscode.extensions.all.map(ext => ext.id);
-                console.log('Available extensions:', allExtensions);
-                throw new Error('DevMirror extension path not found. Available: ' + allExtensions.filter(id => id.includes('devmirror')).join(', '));
-            }
-
-            const cliPath = path.join(extensionPath, 'out', 'cli.js');
+            // Use the local wrapper script that dynamically finds the extension
+            const wrapperPath = path.join(this.rootPath, 'node_modules', '.bin', 'devmirror-cli');
 
             const scriptsToMirror = Object.keys(packageJson.scripts).filter(name =>
                 (name.includes('dev') || name.includes('start')) &&
@@ -45,7 +36,7 @@ export class ScriptModifier {
 
                 if (!packageJson.scripts[mirrorName]) {
                     packageJson.scripts[mirrorName] =
-                        `concurrently "node '${cliPath}'" "${originalScript}"`;
+                        `concurrently "npx devmirror-cli" "${originalScript}"`;
                     modified = true;
                     console.log(`Added mirror script: ${mirrorName}`);
                 }
@@ -54,7 +45,7 @@ export class ScriptModifier {
             if (!scriptsToMirror.length) {
                 if (!packageJson.scripts['dev:mirror']) {
                     packageJson.scripts['dev:mirror'] =
-                        `concurrently "node '${cliPath}'" "echo \\"No dev script found\\""`;
+                        `concurrently "npx devmirror-cli" "echo \\"No dev script found\\""`;
                     modified = true;
                 }
             }
@@ -100,5 +91,30 @@ export class ScriptModifier {
         } catch (error) {
             throw new Error(`Failed to remove mirror scripts: ${error}`);
         }
+    }
+
+    private async installWrapper(): Promise<void> {
+        const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
+                             vscode.extensions.getExtension('devmirror')?.extensionPath;
+
+        if (!extensionPath) {
+            throw new Error('DevMirror extension not found');
+        }
+
+        // Copy wrapper script to project
+        const wrapperSource = path.join(extensionPath, 'out', 'devmirror-cli-wrapper.js');
+        const binDir = path.join(this.rootPath, 'node_modules', '.bin');
+        const wrapperDest = path.join(binDir, 'devmirror-cli');
+
+        // Ensure .bin directory exists
+        await fs.mkdir(binDir, { recursive: true });
+
+        // Copy wrapper script
+        await fs.copyFile(wrapperSource, wrapperDest);
+
+        // Make it executable
+        await fs.chmod(wrapperDest, '755');
+
+        console.log('Installed devmirror-cli wrapper');
     }
 }

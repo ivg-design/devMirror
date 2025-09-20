@@ -248,7 +248,7 @@ export class CDPManager {
                 method: event.type,
                 message: message,
                 stack: event.stackTrace,
-                timestamp: event.timestamp * 1000,
+                timestamp: Date.now(),
                 count: count > 1 ? count : undefined
             });
         } else if (count === config.throttle.suppressAfter + 1) {

@@ -1,16 +1,16 @@
 # DevMirror - Browser Console Capture Extension
 
-**Capture 100% of browser console output using Chrome DevTools Protocol**
+**Capture 100% of browser console output using Chrome DevTools Protocol with Puppeteer**
 
-[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.5-blue.svg)](CHANGELOG.md)
 [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE.txt)
 
 DevMirror is a production-ready VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## 🚀 Latest Release: v0.3.0
+## 🚀 Latest Release: v0.3.5
 
-Production-ready stable release with optimized performance and full feature set. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+Fixed panel script generation to use dynamic CLI wrapper, improved log folding, status bar monitoring, and log viewer opens in tab with word wrap disabled. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Features
 
@@ -75,7 +75,7 @@ npm run dev:mirror
 ```
 
 **What happens:**
-1. Chrome launches with DevTools open
+1. Chromium browser launches with DevTools open
 2. Your dev server starts normally
 3. ALL console output is captured to `./devmirror-logs/`
 4. VS Code shows capture status in status bar
@@ -108,7 +108,7 @@ npm run dev:mirror
 {
     "url": "http://localhost:3000",
     "outputDir": "./devmirror-logs",
-    "chromePath": "/usr/bin/google-chrome",
+    "chromePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
     "mode": "cdp",
     "throttle": {
         "maxPerSecond": 100,
@@ -182,12 +182,12 @@ Live monitoring display:
 
 - VS Code 1.104.0 or higher
 - Node.js 16 or higher
-- Chrome or Chromium browser
+- Chromium browser (automatically managed by Puppeteer)
 - **puppeteer-core** npm package (auto-installed on first setup)
 
 ### Important: Puppeteer Requirement
 
-DevMirror uses `puppeteer-core` to control Chrome via DevTools Protocol. The extension will:
+DevMirror uses `puppeteer-core` to control Chromium browser via DevTools Protocol. The extension will:
 1. Check if puppeteer-core is installed in your project
 2. Prompt to install it automatically if missing
 3. Add it to your project's dependencies
@@ -199,8 +199,8 @@ npm install puppeteer-core
 
 ## Troubleshooting
 
-### Chrome not found
-Specify path in `devmirror.config.json`:
+### Chromium browser not found
+Specify path to Chrome or Chromium in `devmirror.config.json`:
 ```json
 {
     "chromePath": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"

@@ -1,4 +1,3 @@
-import * as puppeteer from 'puppeteer-core';
 import { LogWriter } from './logWriter';
 import { DevMirrorConfig } from './configHandler';
 import * as fs from 'fs/promises';
@@ -6,15 +5,40 @@ import * as path from 'path';
 import * as os from 'os';
 
 export class CEFBridge {
-    private browser: puppeteer.Browser | null = null;
-    private page: puppeteer.Page | null = null;
+    private browser: any = null;
+    private page: any = null;
     private logWriter: LogWriter;
+    private puppeteer: any;
 
     constructor() {
         this.logWriter = new LogWriter('');
     }
 
     async start(config: DevMirrorConfig): Promise<void> {
+        // Try to load puppeteer-core from multiple locations
+        let puppeteerLoaded = false;
+
+        // Try project's node_modules first
+        try {
+            const projectPath = path.join(process.cwd(), 'node_modules', 'puppeteer-core');
+            this.puppeteer = require(projectPath);
+            puppeteerLoaded = true;
+        } catch (error) {
+            // Try global or direct require
+            try {
+                this.puppeteer = require('puppeteer-core');
+                puppeteerLoaded = true;
+            } catch (error2) {
+                // Not found
+            }
+        }
+
+        if (!puppeteerLoaded) {
+            console.error('❌ puppeteer-core not found. Please install it:');
+            console.error('   npm install puppeteer-core');
+            console.error('   or globally: npm install -g puppeteer-core');
+            process.exit(1);
+        }
         if (config.mode !== 'cef') {
             throw new Error('CEFBridge requires mode: "cef" in configuration');
         }
@@ -30,7 +54,7 @@ export class CEFBridge {
         console.log(`└─ Adobe CEP Extension`);
 
         try {
-            this.browser = await puppeteer.connect({
+            this.browser = await this.puppeteer.connect({
                 browserURL: `http://localhost:${debugPort}`,
                 defaultViewport: null
             });
@@ -115,21 +139,21 @@ export class CEFBridge {
         await client.send('Console.enable');
         await client.send('Log.enable');
 
-        client.on('Runtime.consoleAPICalled', (event) => {
+        client.on('Runtime.consoleAPICalled', (event: any) => {
             const args = event.args || [];
             const message = args
-                .map(arg => this.formatCEFArg(arg))
+                .map((arg: any) => this.formatCEFArg(arg))
                 .join(' ');
 
             this.logWriter.write({
                 type: 'console',
                 method: event.type,
                 message: message,
-                timestamp: event.timestamp * 1000
+                timestamp: Date.now()
             });
         });
 
-        client.on('Runtime.exceptionThrown', (event) => {
+        client.on('Runtime.exceptionThrown', (event: any) => {
             this.logWriter.write({
                 type: 'error',
                 message: event.exceptionDetails.text || 'CEF Exception',
@@ -138,7 +162,7 @@ export class CEFBridge {
             });
         });
 
-        client.on('Log.entryAdded', (event) => {
+        client.on('Log.entryAdded', (event: any) => {
             this.logWriter.write({
                 type: 'browser',
                 level: event.entry.level,
@@ -148,7 +172,7 @@ export class CEFBridge {
             });
         });
 
-        this.page.on('console', (msg) => {
+        this.page.on('console', (msg: any) => {
             const type = msg.type();
             const text = msg.text();
 

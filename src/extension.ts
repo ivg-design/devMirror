@@ -13,11 +13,12 @@ export function activate(context: vscode.ExtensionContext) {
     const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
 
     // Watch for log file changes and apply folding with debouncing
-    const logWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/current.log');
+    const logWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/*.log');
+    const currentLogWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/current.log');
 
     let foldTimeout: NodeJS.Timeout | null = null;
 
-    logWatcher.onDidChange(async (uri) => {
+    const applyFolding = async (uri: vscode.Uri) => {
         // Clear existing timeout
         if (foldTimeout) {
             clearTimeout(foldTimeout);
@@ -28,17 +29,38 @@ export function activate(context: vscode.ExtensionContext) {
             // Check if file is currently open in editor
             const editors = vscode.window.visibleTextEditors;
             for (const editor of editors) {
-                if (editor.document.uri.fsPath === uri.fsPath) {
+                if (editor.document.uri.fsPath === uri.fsPath ||
+                    editor.document.uri.fsPath.endsWith('current.log') ||
+                    editor.document.uri.fsPath.includes('devmirror-logs')) {
                     // Apply folding after writes have settled
                     await vscode.commands.executeCommand('editor.foldAll');
+                    console.log('Applied folding to:', editor.document.uri.fsPath);
                     break;
                 }
             }
             foldTimeout = null;
         }, 500);
+    };
+
+    // Also watch when files are opened
+    vscode.window.onDidChangeActiveTextEditor(async (editor) => {
+        if (editor && (editor.document.uri.fsPath.endsWith('.log') ||
+                      editor.document.uri.fsPath.includes('devmirror-logs'))) {
+            // Apply folding immediately when opening log files
+            setTimeout(async () => {
+                await vscode.commands.executeCommand('editor.foldAll');
+                console.log('Applied folding on open to:', editor.document.uri.fsPath);
+            }, 100);
+        }
     });
 
+    logWatcher.onDidChange(applyFolding);
+    currentLogWatcher.onDidChange(applyFolding);
+    logWatcher.onDidCreate(applyFolding);
+    currentLogWatcher.onDidCreate(applyFolding);
+
     context.subscriptions.push(logWatcher);
+    context.subscriptions.push(currentLogWatcher);
 
     // Setup command
     const setupCommand = vscode.commands.registerCommand('devmirror.setup', async () => {
@@ -128,9 +150,12 @@ export function activate(context: vscode.ExtensionContext) {
         try {
             const doc = await vscode.workspace.openTextDocument(uri);
             const editor = await vscode.window.showTextDocument(doc, {
-                viewColumn: vscode.ViewColumn.Beside,
+                viewColumn: vscode.ViewColumn.Active,  // Open in active tab, not beside
                 preserveFocus: false
             });
+
+            // Turn off word wrap for this editor
+            await vscode.commands.executeCommand('editor.action.toggleWordWrap');
 
             // Apply folding to collapse console lines
             // Need to wait for the editor to be fully ready

@@ -17,6 +17,9 @@ export class StatusMonitor {
             100
         );
         this.statusBarItem.command = 'devmirror.showLogs';
+        this.statusBarItem.text = '🔴 DevMirror';
+        this.statusBarItem.tooltip = 'DevMirror - Click to start capture';
+        this.statusBarItem.show();
 
         // Start watching for CLI instances
         this.startWatching();
@@ -41,19 +44,18 @@ export class StatusMonitor {
             const statusPath = path.join(folder.uri.fsPath, 'devmirror-logs', '.devmirror-status.json');
             try {
                 const stats = fs.statSync(statusPath);
-                // Check if file is recent (updated in last 5 seconds)
-                if (Date.now() - stats.mtimeMs < 5000) {
+                // Check if file is recent (updated in last 10 seconds)
+                if (Date.now() - stats.mtimeMs < 10000) {
                     const statusData = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
                     foundActive = true;
 
-                    // Start monitoring if not already
-                    if (!this.updateInterval) {
-                        this.startFromCLI(folder.uri.fsPath, statusData.startTime);
-                    }
+                    // Always restart monitoring to ensure it's working
+                    this.startFromCLI(folder.uri.fsPath, statusData.startTime);
                     break;
                 }
-            } catch {
+            } catch (error) {
                 // Status file doesn't exist or is old
+                console.log('Error checking status file:', error);
             }
         }
 

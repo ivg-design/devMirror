@@ -117,10 +117,12 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 return;
             }
 
-            const cliPath = path.join(extensionPath, 'out', 'cli.js');
             const scriptName = item.label as string;
             const mirrorName = `${scriptName}:mirror`;
             const originalCommand = item.description as string;
+
+            // Install wrapper to ensure npx devmirror-cli works
+            await this.installWrapper(packageDir);
 
             // Check if concurrently is available
             const hasLocalConcurrently = await this.checkForDependency(item.resourcePath, 'concurrently');
@@ -142,7 +144,7 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 return;
             }
 
-            packageJson.scripts[mirrorName] = `concurrently "node '${cliPath}'" "${originalCommand}"`;
+            packageJson.scripts[mirrorName] = `concurrently "npx devmirror-cli" "${originalCommand}"`;
 
             await fs.writeFile(item.resourcePath, JSON.stringify(packageJson, null, 2), 'utf8');
 
@@ -164,6 +166,31 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
             );
         } catch {
             return false;
+        }
+    }
+
+    private async installWrapper(packageDir: string): Promise<void> {
+        // Check if wrapper exists in project
+        const wrapperDest = path.join(packageDir, 'node_modules', '.bin', 'devmirror-cli');
+
+        try {
+            await fs.access(wrapperDest);
+        } catch {
+            // Wrapper doesn't exist, copy it from extension
+            const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
+                                  vscode.extensions.getExtension('devmirror')?.extensionPath;
+
+            if (extensionPath) {
+                const wrapperSrc = path.join(extensionPath, 'src', 'devmirror-cli-wrapper.js');
+                const binDir = path.join(packageDir, 'node_modules', '.bin');
+
+                // Ensure .bin directory exists
+                await fs.mkdir(binDir, { recursive: true });
+
+                // Copy the wrapper
+                const content = await fs.readFile(wrapperSrc, 'utf8');
+                await fs.writeFile(wrapperDest, content, { mode: 0o755 });
+            }
         }
     }
 
