@@ -1,23 +1,55 @@
 {
-  "name": "my-extension",
-  "displayName": "My Extension",
-  "description": "A VS Code extension built with TypeScript",
-  "version": "0.0.1",
+  "name": "devmirror",
+  "displayName": "DevMirror",
+  "publisher": "IVGDesign",
+  "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
+  "version": "0.2.3",
+  "icon": "icon.png",
   "engines": {
-    "vscode": "^1.74.0"
+    "vscode": "^1.104.0"
   },
   "categories": [
+    "Debuggers",
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:devmirror.setup"
+  ],
   "main": "./out/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "my-extension.helloWorld",
-        "title": "Hello World"
+        "command": "devmirror.setup",
+        "title": "DevMirror: Setup Project"
+      },
+      {
+        "command": "devmirror.start",
+        "title": "DevMirror: Start Capture"
+      },
+      {
+        "command": "devmirror.stop",
+        "title": "DevMirror: Stop Capture"
+      },
+      {
+        "command": "devmirror.showLogs",
+        "title": "DevMirror: Show Logs"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "DevMirror",
+      "properties": {
+        "devmirror.chromePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to Chrome executable (optional)"
+        },
+        "devmirror.outputDir": {
+          "type": "string",
+          "default": "./devmirror-logs",
+          "description": "Directory for log output files"
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -27,6 +59,9 @@
     "lint": "eslint src --ext .ts",
     "test": "vscode-test"
   },
+  "dependencies": {
+    "puppeteer-core": "^21.11.0"
+  },
   "devDependencies": {
     "@types/node": "^20.19.17",
     "@types/vscode": "^1.104.0",
@@ -34,7 +69,19 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@vscode/test-cli": "^0.0.4",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.6.0",
     "eslint": "^8.57.1",
     "typescript": "^5.9.2"
-  }
+  },
+  "bin": {
+    "devmirror-cdp": "./out/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ivg-design/devMirror.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ivg-design/devMirror/issues"
+  },
+  "homepage": "https://github.com/ivg-design/devMirror#readme"
 }

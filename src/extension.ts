@@ -1,13 +1,124 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
+import { ConfigHandler } from './configHandler';
+import { ScriptModifier } from './scriptModifier';
+import { StatusMonitor } from './statusMonitor';
+import { DevMirrorLauncher } from './devmirror-launcher';
+import { PuppeteerChecker } from './puppeteerChecker';
 
 export function activate(context: vscode.ExtensionContext) {
-    console.log('Congratulations, your extension "my-extension" is now active!');
+    const outputChannel = vscode.window.createOutputChannel('DevMirror');
+    const statusMonitor = new StatusMonitor();
+    const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
 
-    let disposable = vscode.commands.registerCommand('my-extension.helloWorld', () => {
-        vscode.window.showInformationMessage('Hello World from My Extension!');
+    // Setup command
+    const setupCommand = vscode.commands.registerCommand('devmirror.setup', async () => {
+        try {
+            outputChannel.show();
+            outputChannel.appendLine('🔴 DevMirror Setup Starting...');
+
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            if (!workspaceFolder) {
+                vscode.window.showErrorMessage('Please open a workspace folder first');
+                return;
+            }
+
+            const rootPath = workspaceFolder.uri.fsPath;
+
+            // Check for puppeteer-core first
+            outputChannel.appendLine('├─ Checking for puppeteer-core...');
+            const hasPuppeteer = await PuppeteerChecker.ensurePuppeteerInstalled(rootPath);
+            if (!hasPuppeteer) {
+                outputChannel.appendLine('└─ Setup cancelled: puppeteer-core is required');
+                vscode.window.showWarningMessage('DevMirror setup cancelled. puppeteer-core is required.');
+                return;
+            }
+            outputChannel.appendLine('├─ puppeteer-core found ✓');
+
+            const config = new ConfigHandler(rootPath);
+            const modifier = new ScriptModifier(rootPath);
+
+            outputChannel.appendLine('├─ Creating config file...');
+            await config.initialize();
+
+            outputChannel.appendLine('├─ Modifying package.json...');
+            await modifier.addMirrorScripts();
+
+            outputChannel.appendLine('└─ Setup complete!');
+
+            vscode.window.showInformationMessage(
+                'DevMirror setup complete! Run "npm run dev:mirror" or use "DevMirror: Start" command.',
+                'Open Config'
+            ).then(selection => {
+                if (selection === 'Open Config') {
+                    const configPath = vscode.Uri.file(`${rootPath}/devmirror.config.json`);
+                    vscode.window.showTextDocument(configPath);
+                }
+            });
+        } catch (error) {
+            outputChannel.appendLine(`Error: ${error}`);
+            vscode.window.showErrorMessage(`DevMirror setup failed: ${error}`);
+        }
     });
 
-    context.subscriptions.push(disposable);
+    // Start command
+    const startCommand = vscode.commands.registerCommand('devmirror.start', async () => {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            vscode.window.showErrorMessage('Please open a workspace folder first');
+            return;
+        }
+
+        const rootPath = workspaceFolder.uri.fsPath;
+
+        // Check for puppeteer-core before starting
+        const hasPuppeteer = await PuppeteerChecker.ensurePuppeteerInstalled(rootPath);
+        if (!hasPuppeteer) {
+            vscode.window.showWarningMessage('Cannot start DevMirror. puppeteer-core is required.');
+            return;
+        }
+
+        await launcher.start(rootPath);
+    });
+
+    // Stop command
+    const stopCommand = vscode.commands.registerCommand('devmirror.stop', () => {
+        launcher.stop();
+    });
+
+    // Show logs command
+    const showLogsCommand = vscode.commands.registerCommand('devmirror.showLogs', async () => {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+            return;
+        }
+
+        const logPath = path.join(workspaceFolder.uri.fsPath, 'devmirror-logs', 'current.log');
+        const uri = vscode.Uri.file(logPath);
+
+        try {
+            const doc = await vscode.workspace.openTextDocument(uri);
+            await vscode.window.showTextDocument(doc, {
+                viewColumn: vscode.ViewColumn.Beside,
+                preserveFocus: false
+            });
+
+            // Apply folding to collapse console lines
+            const editor = vscode.window.activeTextEditor;
+            if (editor && editor.document.uri.fsPath === logPath) {
+                vscode.commands.executeCommand('editor.foldAll');
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Cannot open log file: ${error}`);
+        }
+    });
+
+    context.subscriptions.push(setupCommand);
+    context.subscriptions.push(startCommand);
+    context.subscriptions.push(stopCommand);
+    context.subscriptions.push(showLogsCommand);
+    context.subscriptions.push(outputChannel);
+    context.subscriptions.push(statusMonitor);
 }
 
 export function deactivate() {}
