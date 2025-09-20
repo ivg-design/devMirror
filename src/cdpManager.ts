@@ -513,11 +513,18 @@ export class CDPManager {
             const pages = await this.browser.pages();
             this.page = pages[0] || await this.browser.newPage();
 
-            // Navigate to CEF debug interface
-            await this.navigateToCEF(debugUrl);
+            // Navigate to CEF debug interface - DISABLED FOR TESTING
+            // await this.navigateToCEF(debugUrl);
 
-            // Set up auto-reconnect monitoring
-            this.setupCEFReconnect(debugUrl);
+            // Just go to the main debug page and STOP
+            await this.page.goto(debugUrl, {
+                waitUntil: 'domcontentloaded',
+                timeout: 10000
+            });
+            console.log('   ⏸️  Stopped at CEF index page - manual navigation required');
+
+            // Set up auto-reconnect monitoring - DISABLED FOR TESTING
+            // this.setupCEFReconnect(debugUrl);
 
             // Try to connect to CEF debugger for console capture
             // Retry a few times as the CEF target might not be immediately available
@@ -604,6 +611,7 @@ export class CDPManager {
     }
 
     private setupCEFReconnect(debugUrl: string): void {
+        return; // DISABLED FOR TESTING
         if (!this.page) return;
 
         // Monitor the page for disconnection/errors

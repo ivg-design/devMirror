@@ -2,6 +2,26 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.24] - 2025-09-20
+
+### Testing
+- **Disabled Auto-Navigation**: Testing if auto-navigation causes WebSocket errors
+- Browser now stops at localhost:8555 index page
+- Manual navigation required to reach DevTools
+- This will help identify if auto-navigation interferes with connection
+
+## [0.4.23] - 2025-09-20
+
+### Fixed
+- **WebSocket Error Issue**: Extension was loading before Vite was ready
+- Start DevMirror and Vite SIMULTANEOUSLY to prevent reload
+- Both must be ready when extension loads to avoid connection errors
+
+### Analysis
+- CEF extension loads from cache when Vite isn't ready
+- This causes WebSocket errors and triggers a reload
+- Starting both services together prevents this issue
+
 ## [0.4.22] - 2025-09-20
 
 ### Fixed
