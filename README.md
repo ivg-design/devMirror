@@ -1,4 +1,4 @@
-# DevMirror - Browser Console Capture Extension v0.2.9
+# DevMirror - Browser Console Capture Extension v0.2.10
 
 **Capture 100% of browser console output using Chrome DevTools Protocol**
 
