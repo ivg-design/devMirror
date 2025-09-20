@@ -10,6 +10,8 @@ export class StatusMonitor {
     private logFilePath: string | null = null;
     private lastSize: number = 0;
     private watchInterval: NodeJS.Timeout | null = null;
+    private currentWorkspacePath: string | null = null;
+    private isRunning: boolean = false;
 
     constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
@@ -17,9 +19,9 @@ export class StatusMonitor {
             100
         );
         this.statusBarItem.command = 'devmirror.showLogs';
-        this.statusBarItem.text = '🔴 DevMirror';
-        this.statusBarItem.tooltip = 'DevMirror - Click to start capture';
-        this.statusBarItem.show();
+        this.statusBarItem.text = 'DevMirror';
+        this.statusBarItem.tooltip = 'DevMirror - Click to view logs';
+        this.statusBarItem.hide();  // Start hidden when not running
 
         // Start watching for CLI instances
         this.startWatching();
@@ -49,8 +51,10 @@ export class StatusMonitor {
                     const statusData = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
                     foundActive = true;
 
-                    // Always restart monitoring to ensure it's working
-                    this.startFromCLI(folder.uri.fsPath, statusData.startTime);
+                    // Start monitoring if not already running for this workspace
+                    if (!this.isRunning || this.currentWorkspacePath !== folder.uri.fsPath) {
+                        this.startFromCLI(folder.uri.fsPath, statusData.startTime);
+                    }
                     break;
                 }
             } catch (error) {
@@ -69,20 +73,25 @@ export class StatusMonitor {
         this.startTime = new Date(startTimeMs);
         this.logCount = 0;
         this.lastSize = 0;
+        this.currentWorkspacePath = workspacePath;
+        this.isRunning = true;
 
         const logDir = path.join(workspacePath, 'devmirror-logs');
         const currentLogPath = path.join(logDir, 'current.log');
         this.logFilePath = currentLogPath;
 
-        this.statusBarItem.text = '🔴 DevMirror: Starting...';
+        this.statusBarItem.text = '🟢 DevMirror: Starting...';
         this.statusBarItem.show();
 
-        // Update every second
-        if (!this.updateInterval) {
-            this.updateInterval = setInterval(() => {
-                this.updateStatus();
-            }, 1000);
+        // Clear any existing interval
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
         }
+
+        // Update every second
+        this.updateInterval = setInterval(() => {
+            this.updateStatus();
+        }, 1000);
 
         this.updateStatus();
     }
@@ -91,13 +100,20 @@ export class StatusMonitor {
         this.startTime = new Date();
         this.logCount = 0;
         this.lastSize = 0;
+        this.currentWorkspacePath = workspacePath;
+        this.isRunning = true;
 
         const logDir = path.join(workspacePath, 'devmirror-logs');
         const currentLogPath = path.join(logDir, 'current.log');
         this.logFilePath = currentLogPath;
 
-        this.statusBarItem.text = '🔴 DevMirror: Starting...';
+        this.statusBarItem.text = '🟢 DevMirror: Starting...';
         this.statusBarItem.show();
+
+        // Clear any existing interval
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
 
         // Update every second
         this.updateInterval = setInterval(() => {
@@ -105,6 +121,10 @@ export class StatusMonitor {
         }, 1000);
 
         this.updateStatus();
+    }
+
+    getCurrentWorkspacePath(): string | null {
+        return this.currentWorkspacePath;
     }
 
     private updateStatus(): void {
@@ -138,8 +158,8 @@ export class StatusMonitor {
             // Ignore errors when reading log file
         }
 
-        this.statusBarItem.text = `🔴 DevMirror | ${this.logCount} logs | ${timeString}`;
-        this.statusBarItem.tooltip = `DevMirror Active\nLogs: ${this.logCount}\nRunning: ${timeString}\nClick to open log file`;
+        this.statusBarItem.text = `🟢 DevMirror | ${this.logCount} logs | ${timeString}`;
+        this.statusBarItem.tooltip = `DevMirror Active\nWorkspace: ${path.basename(this.currentWorkspacePath || '')}\nLogs: ${this.logCount}\nRunning: ${timeString}\nClick to open log file`;
     }
 
     stop(): void {
@@ -148,10 +168,11 @@ export class StatusMonitor {
             this.updateInterval = null;
         }
 
-        this.statusBarItem.text = '🔴 DevMirror';
-        this.statusBarItem.tooltip = 'DevMirror - Click to setup';
+        this.statusBarItem.hide();
         this.startTime = null;
         this.logCount = 0;
+        this.currentWorkspacePath = null;
+        this.isRunning = false;
     }
 
     dispose(): void {

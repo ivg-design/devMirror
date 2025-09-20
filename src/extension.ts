@@ -24,22 +24,31 @@ export function activate(context: vscode.ExtensionContext) {
             clearTimeout(foldTimeout);
         }
 
-        // Set new timeout to fold after 500ms of no changes
+        // Set new timeout to fold after 1 second of no changes
         foldTimeout = setTimeout(async () => {
             // Check if file is currently open in editor
             const editors = vscode.window.visibleTextEditors;
             for (const editor of editors) {
                 if (editor.document.uri.fsPath === uri.fsPath ||
-                    editor.document.uri.fsPath.endsWith('current.log') ||
-                    editor.document.uri.fsPath.includes('devmirror-logs')) {
+                    (uri.fsPath.includes('devmirror-logs') &&
+                     editor.document.uri.fsPath.includes('devmirror-logs'))) {
+                    // Save cursor position
+                    const position = editor.selection.active;
+
                     // Apply folding after writes have settled
                     await vscode.commands.executeCommand('editor.foldAll');
+
+                    // Restore cursor and reveal it
+                    const newSelection = new vscode.Selection(position, position);
+                    editor.selection = newSelection;
+                    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+
                     console.log('Applied folding to:', editor.document.uri.fsPath);
                     break;
                 }
             }
             foldTimeout = null;
-        }, 500);
+        }, 1000);
     };
 
     // Also watch when files are opened
@@ -139,12 +148,23 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Show logs command
     const showLogsCommand = vscode.commands.registerCommand('devmirror.showLogs', async () => {
-        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-        if (!workspaceFolder) {
-            return;
+        // Get the current workspace from status monitor
+        const currentWorkspace = statusMonitor.getCurrentWorkspacePath();
+
+        let workspacePath: string;
+        if (currentWorkspace) {
+            // Use the workspace that's currently being monitored
+            workspacePath = currentWorkspace;
+        } else {
+            // Fall back to first workspace if nothing is being monitored
+            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+            if (!workspaceFolder) {
+                return;
+            }
+            workspacePath = workspaceFolder.uri.fsPath;
         }
 
-        const logPath = path.join(workspaceFolder.uri.fsPath, 'devmirror-logs', 'current.log');
+        const logPath = path.join(workspacePath, 'devmirror-logs', 'current.log');
         const uri = vscode.Uri.file(logPath);
 
         try {
@@ -154,8 +174,7 @@ export function activate(context: vscode.ExtensionContext) {
                 preserveFocus: false
             });
 
-            // Apply word wrap and folding to collapse console lines
-            // Need to wait for the editor to be fully ready
+            // Apply settings and scroll to bottom
             setTimeout(async () => {
                 if (editor && editor.document.uri.fsPath === logPath) {
                     // Check current word wrap state and disable if enabled
@@ -164,7 +183,18 @@ export function activate(context: vscode.ExtensionContext) {
                     if (wordWrap !== 'off') {
                         await vscode.commands.executeCommand('editor.action.toggleWordWrap');
                     }
+
+                    // Apply folding
                     await vscode.commands.executeCommand('editor.foldAll');
+
+                    // Scroll to bottom (tail)
+                    const lastLine = doc.lineCount - 1;
+                    const range = new vscode.Range(lastLine, 0, lastLine, 0);
+                    editor.revealRange(range, vscode.TextEditorRevealType.Default);
+
+                    // Move cursor to end
+                    const position = new vscode.Position(lastLine, 0);
+                    editor.selection = new vscode.Selection(position, position);
                 }
             }, 200);
         } catch (error) {

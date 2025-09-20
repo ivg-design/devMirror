@@ -2,6 +2,16 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.3.6] - 2025-09-20
+
+### Fixed
+- Folding now applies to new log entries with better preservation of cursor position
+- Status bar shows green emoji when running, hidden when inactive
+- Status bar displays log count and uptime correctly
+- Status bar click opens the correct workspace log file
+- Log viewer opens at bottom (tail) with auto-scroll ready
+- Improved folding debounce to 1 second for better stability
+
 ## [0.3.5] - 2025-09-20
 
 ### Fixed
