@@ -1,36 +1,40 @@
-# DevMirror - Browser Console Capture Extension v0.2.3
+# DevMirror - Browser Console Capture Extension v0.2.4
 
-🔴 **Capture 100% of browser console output using Chrome DevTools Protocol**
+**Capture 100% of browser console output using Chrome DevTools Protocol**
 
 DevMirror is a VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## New in v0.2.3
+## New in v0.2.4
 
-- 💾 **Persistent Chrome Profile** - DevTools position and settings remembered between sessions
-- 👤 **Publisher ID** - Official IVGDesign publisher
-- 🔗 **Repository Links** - Direct links to GitHub repo and issues
+- **Extension ID Fix** - Fixed extension path detection for all publisher ID variations
+
+## v0.2.3
+
+- **Persistent Chrome Profile** - DevTools position and settings remembered between sessions
+- **Publisher ID** - Official IVGDesign publisher
+- **Repository Links** - Direct links to GitHub repo and issues
 
 ## Previous v0.2.2
 
-- 📊 **Live Status Bar** - Shows log count and capture duration
-- 📁 **Auto-Folding Logs** - Console lines automatically collapsed when viewing
-- 🎨 **Extension Icon** - Beautiful DevMirror icon in the marketplace
-- 🚀 **No .devmirror folder** - Cleaner project structure, runs from extension
-- 🎯 **Direct VS Code Commands** - Start/stop capture without terminal
+- **Live Status Bar** - Shows log count and capture duration
+- **Auto-Folding Logs** - Console lines automatically collapsed when viewing
+- **Extension Icon** - Beautiful DevMirror icon in the marketplace
+- **No .devmirror folder** - Cleaner project structure, runs from extension
+- **Direct VS Code Commands** - Start/stop capture without terminal
 
 ## Features
 
-- ✅ **100% Console Capture** - Uses Chrome DevTools Protocol for complete coverage
-- ✅ **Zero Configuration** - Auto-detects your dev server settings
-- ✅ **Live Monitoring** - Status bar shows log count and session duration
-- ✅ **Auto-Folding Logs** - Opens logs with all entries collapsed for easier navigation
-- ✅ **Message Deduplication** - Smart throttling prevents log flooding
-- ✅ **Network Error Tracking** - Captures failed requests and HTTP errors
-- ✅ **Security Monitoring** - Logs CSP violations and security warnings
-- ✅ **Page Lifecycle Events** - Tracks page loads and navigations
-- ✅ **Adobe CEP Support** - Debug After Effects and other Adobe extensions
-- ✅ **Timestamped Logs** - Human-readable format with millisecond precision
-- ✅ **Automatic File Rotation** - New log files at 50MB to prevent huge files
+- **100% Console Capture** - Uses Chrome DevTools Protocol for complete coverage
+- **Zero Configuration** - Auto-detects your dev server settings
+- **Live Monitoring** - Status bar shows log count and session duration
+- **Auto-Folding Logs** - Opens logs with all entries collapsed for easier navigation
+- **Message Deduplication** - Smart throttling prevents log flooding
+- **Network Error Tracking** - Captures failed requests and HTTP errors
+- **Security Monitoring** - Logs CSP violations and security warnings
+- **Page Lifecycle Events** - Tracks page loads and navigations
+- **Adobe CEP Support** - Debug After Effects and other Adobe extensions
+- **Timestamped Logs** - Human-readable format with millisecond precision
+- **Automatic File Rotation** - New log files at 50MB to prevent huge files
 
 ## Installation
 

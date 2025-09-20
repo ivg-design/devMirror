@@ -18,12 +18,17 @@ export class ScriptModifier {
                 packageJson.scripts = {};
             }
 
-            // Get extension path
-            const extensionPath = vscode.extensions.getExtension('devmirror')?.extensionPath ||
-                                  vscode.extensions.getExtension('unknown.devmirror')?.extensionPath;
+            // Get extension path - try multiple possible IDs
+            const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
+                                  vscode.extensions.getExtension('devmirror')?.extensionPath ||
+                                  vscode.extensions.getExtension('unknown.devmirror')?.extensionPath ||
+                                  vscode.extensions.getExtension('undefined_publisher.devmirror')?.extensionPath;
 
             if (!extensionPath) {
-                throw new Error('DevMirror extension path not found');
+                // List all extensions to debug
+                const allExtensions = vscode.extensions.all.map(ext => ext.id);
+                console.log('Available extensions:', allExtensions);
+                throw new Error('DevMirror extension path not found. Available: ' + allExtensions.filter(id => id.includes('devmirror')).join(', '));
             }
 
             const cliPath = path.join(extensionPath, 'out', 'cli.js');

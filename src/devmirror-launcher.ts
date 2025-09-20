@@ -19,10 +19,16 @@ export class DevMirrorLauncher {
             return;
         }
 
-        // Get the path to the CLI in the extension
-        const extensionPath = vscode.extensions.getExtension('devmirror')?.extensionPath;
+        // Get the path to the CLI in the extension - try multiple possible IDs
+        const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
+                              vscode.extensions.getExtension('devmirror')?.extensionPath ||
+                              vscode.extensions.getExtension('unknown.devmirror')?.extensionPath ||
+                              vscode.extensions.getExtension('undefined_publisher.devmirror')?.extensionPath;
+
         if (!extensionPath) {
-            vscode.window.showErrorMessage('DevMirror extension path not found');
+            const allExtensions = vscode.extensions.all.map(ext => ext.id);
+            const devmirrorExts = allExtensions.filter(id => id.toLowerCase().includes('devmirror'));
+            vscode.window.showErrorMessage(`DevMirror extension path not found. Found: ${devmirrorExts.join(', ')}`);
             return;
         }
 
