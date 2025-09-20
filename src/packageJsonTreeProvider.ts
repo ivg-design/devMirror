@@ -96,6 +96,11 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
         }
 
         try {
+            const packageDir = path.dirname(item.resourcePath);
+
+            // Check for and create devmirror.config.json if needed
+            await this.ensureDevMirrorConfig(packageDir);
+
             const content = await fs.readFile(item.resourcePath, 'utf8');
             const packageJson = JSON.parse(content);
 
@@ -160,6 +165,91 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
         } catch {
             return false;
         }
+    }
+
+    private async ensureDevMirrorConfig(packageDir: string): Promise<void> {
+        const configPath = path.join(packageDir, 'devmirror.config.json');
+
+        try {
+            // Check if config already exists
+            await fs.access(configPath);
+
+            // Config exists, let's verify it has the required fields
+            const content = await fs.readFile(configPath, 'utf8');
+            const config = JSON.parse(content);
+
+            // Update if missing required fields
+            let updated = false;
+            if (!config.url) {
+                // Try to detect port from package.json scripts
+                const port = await this.detectDevServerPort(packageDir);
+                config.url = `http://localhost:${port}`;
+                updated = true;
+            }
+            if (!config.outputDir) {
+                config.outputDir = './devmirror-logs';
+                updated = true;
+            }
+
+            if (updated) {
+                await fs.writeFile(configPath, JSON.stringify(config, null, 2), 'utf8');
+            }
+        } catch (error) {
+            // Config doesn't exist, create it
+            const port = await this.detectDevServerPort(packageDir);
+            const defaultConfig = {
+                url: `http://localhost:${port}`,
+                outputDir: './devmirror-logs'
+            };
+
+            await fs.writeFile(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
+            vscode.window.showInformationMessage(`Created devmirror.config.json in ${path.basename(packageDir)}`);
+        }
+    }
+
+    private async detectDevServerPort(packageDir: string): Promise<number> {
+        try {
+            const packageJsonPath = path.join(packageDir, 'package.json');
+            const content = await fs.readFile(packageJsonPath, 'utf8');
+            const packageJson = JSON.parse(content);
+
+            // Look for port in scripts
+            const scripts = packageJson.scripts || {};
+            for (const [name, command] of Object.entries(scripts)) {
+                if (typeof command === 'string' && (name.includes('dev') || name.includes('start'))) {
+                    // Look for port patterns
+                    const portMatch = command.match(/(?:PORT=|--port\s+|:)(\d{4})/);
+                    if (portMatch) {
+                        return parseInt(portMatch[1]);
+                    }
+                }
+            }
+
+            // Check for common config files
+            const envPath = path.join(packageDir, '.env');
+            try {
+                const envContent = await fs.readFile(envPath, 'utf8');
+                const portMatch = envContent.match(/PORT=(\d{4})/);
+                if (portMatch) {
+                    return parseInt(portMatch[1]);
+                }
+            } catch {
+                // No .env file
+            }
+
+            // Default ports based on common frameworks
+            if (packageJson.dependencies?.vite || packageJson.devDependencies?.vite) {
+                return 5173;
+            }
+            if (packageJson.dependencies?.next || packageJson.devDependencies?.next) {
+                return 3000;
+            }
+        } catch {
+            // Error reading package.json
+        }
+
+        // Default fallback
+        return 3000;
     }
 }
 
