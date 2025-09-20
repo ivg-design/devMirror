@@ -1,58 +1,16 @@
-# DevMirror - Browser Console Capture Extension v0.3.0
+# DevMirror - Browser Console Capture Extension
 
 **Capture 100% of browser console output using Chrome DevTools Protocol**
 
-DevMirror is a VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](CHANGELOG.md)
+[![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
+[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE.txt)
 
-## New in v0.3.0
+DevMirror is a production-ready VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-- **Production Ready** - Stable release with all features working
-- **Optimized Package** - Reduced size to 2.72 MB with optimized icon
-- **Clean Codebase** - Removed unnecessary files and folders
-- **Proper .vscodeignore** - Excludes development files from package
+## 🚀 Latest Release: v0.3.0
 
-## v0.2.9
-
-- **Status Bar Auto-Detection** - Shows live status when running npm :mirror scripts
-- **Debounced Log Folding** - Folds after 500ms of no new logs to prevent spam
-- **Local Time Timestamps** - Clean format: YYYY-MM-DD HH:MM:SS.m
-- **CLI Status File** - Enables VS Code detection of external DevMirror processes
-
-## v0.2.7
-
-- **Auto Config Creation** - Automatically creates devmirror.config.json for nested packages
-- **Smart Port Detection** - Detects dev server port from scripts, .env, or framework defaults
-- **Config Validation** - Updates existing configs with missing fields
-
-## v0.2.6
-
-- **Monorepo Support** - Tree view in Explorer showing all package.json files
-- **Script Manager** - Add :mirror scripts to any dev/start script with one click
-- **Fixed Log Folding** - Logs now properly open with collapsed entries
-- **Chrome Maximized** - Browser launches maximized to prevent viewport constraints
-
-## v0.2.5
-
-- **Flexible puppeteer-core loading** - Supports global and project-local installations
-- **Better error messages** - Clear instructions when puppeteer-core is missing
-
-## v0.2.4
-
-- **Extension ID Fix** - Fixed extension path detection for all publisher ID variations
-
-## v0.2.3
-
-- **Persistent Chrome Profile** - DevTools position and settings remembered between sessions
-- **Publisher ID** - Official IVGDesign publisher
-- **Repository Links** - Direct links to GitHub repo and issues
-
-## Previous v0.2.2
-
-- **Live Status Bar** - Shows log count and capture duration
-- **Auto-Folding Logs** - Console lines automatically collapsed when viewing
-- **Extension Icon** - Beautiful DevMirror icon in the marketplace
-- **No .devmirror folder** - Cleaner project structure, runs from extension
-- **Direct VS Code Commands** - Start/stop capture without terminal
+Production-ready stable release with optimized performance and full feature set. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Features
 
