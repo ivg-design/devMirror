@@ -28,10 +28,10 @@ export class StatusMonitor {
     }
 
     private startWatching(): void {
-        // Check every 2 seconds for CLI status files
+        // Check every 1 second for CLI status files (reduced for faster response)
         this.watchInterval = setInterval(() => {
             this.checkForCLIInstances();
-        }, 2000);
+        }, 1000);
 
         // Check immediately
         this.checkForCLIInstances();
@@ -46,8 +46,8 @@ export class StatusMonitor {
             const statusPath = path.join(folder.uri.fsPath, 'devmirror-logs', '.devmirror-status.json');
             try {
                 const stats = fs.statSync(statusPath);
-                // Check if file is recent (updated in last 10 seconds)
-                if (Date.now() - stats.mtimeMs < 10000) {
+                // Check if file is recent (updated in last 3 seconds for faster detection)
+                if (Date.now() - stats.mtimeMs < 3000) {
                     const statusData = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
                     foundActive = true;
 

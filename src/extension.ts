@@ -12,6 +12,20 @@ export function activate(context: vscode.ExtensionContext) {
     const statusMonitor = new StatusMonitor();
     const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
 
+    // Configuration for auto-refresh and auto-fold
+    const config = vscode.workspace.getConfiguration('devmirror');
+    let autoRefresh = config.get<boolean>('autoRefresh', true);
+    let autoFold = config.get<boolean>('autoFold', true);
+
+    // Watch for configuration changes
+    vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration('devmirror')) {
+            const config = vscode.workspace.getConfiguration('devmirror');
+            autoRefresh = config.get<boolean>('autoRefresh', true);
+            autoFold = config.get<boolean>('autoFold', true);
+        }
+    });
+
     // Watch for log file changes and apply refresh/folding with debouncing
     const logWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/*.log');
     const currentLogWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/current.log');
@@ -19,6 +33,8 @@ export function activate(context: vscode.ExtensionContext) {
     let refreshTimeout: NodeJS.Timeout | null = null;
 
     const refreshAndFold = async (uri: vscode.Uri) => {
+        if (!autoRefresh) return;
+
         // Clear existing timeout
         if (refreshTimeout) {
             clearTimeout(refreshTimeout);
@@ -27,46 +43,54 @@ export function activate(context: vscode.ExtensionContext) {
         // Set new timeout to refresh and fold after 1.5 seconds of no changes
         refreshTimeout = setTimeout(async () => {
             // Check if file is currently open in editor
-            const editors = vscode.window.visibleTextEditors;
-            for (const editor of editors) {
-                if (editor.document.uri.fsPath === uri.fsPath ||
-                    (uri.fsPath.includes('devmirror-logs') &&
-                     editor.document.uri.fsPath.includes('devmirror-logs'))) {
+            const activeEditor = vscode.window.activeTextEditor;
+            if (!activeEditor) return;
 
+            const activeDoc = activeEditor.document;
+            // Check if the active document is the log file that changed
+            if (activeDoc.uri.fsPath === uri.fsPath ||
+                (uri.fsPath.includes('devmirror-logs') &&
+                 activeDoc.uri.fsPath.includes('devmirror-logs') &&
+                 activeDoc.uri.fsPath.endsWith('.log'))) {
+
+                try {
                     // Save current position
-                    const position = editor.selection.active;
-                    const wasAtBottom = position.line >= editor.document.lineCount - 5;
+                    const position = activeEditor.selection.active;
+                    const wasAtBottom = position.line >= activeDoc.lineCount - 5;
 
                     // Revert (refresh) the file to get latest content
                     await vscode.commands.executeCommand('workbench.action.files.revert');
 
-                    // Wait a bit for the revert to complete
-                    await new Promise(resolve => setTimeout(resolve, 100));
+                    // Wait for the revert to complete
+                    await new Promise(resolve => setTimeout(resolve, 200));
 
-                    // Apply folding
-                    await vscode.commands.executeCommand('editor.foldAll');
+                    // Apply folding if enabled
+                    if (autoFold) {
+                        await vscode.commands.executeCommand('editor.foldAll');
+                    }
 
                     // If user was at bottom, scroll to new bottom
                     if (wasAtBottom) {
-                        const newLastLine = editor.document.lineCount - 1;
+                        const newLastLine = activeEditor.document.lineCount - 1;
                         const newPosition = new vscode.Position(newLastLine, 0);
-                        editor.selection = new vscode.Selection(newPosition, newPosition);
-                        editor.revealRange(
+                        activeEditor.selection = new vscode.Selection(newPosition, newPosition);
+                        activeEditor.revealRange(
                             new vscode.Range(newPosition, newPosition),
                             vscode.TextEditorRevealType.Default
                         );
                     } else {
                         // Otherwise restore previous position
                         const newSelection = new vscode.Selection(position, position);
-                        editor.selection = newSelection;
-                        editor.revealRange(
+                        activeEditor.selection = newSelection;
+                        activeEditor.revealRange(
                             new vscode.Range(position, position),
                             vscode.TextEditorRevealType.InCenter
                         );
                     }
 
-                    console.log('Refreshed and folded:', editor.document.uri.fsPath);
-                    break;
+                    console.log('Refreshed and folded:', activeDoc.uri.fsPath);
+                } catch (error) {
+                    console.error('Error refreshing log file:', error);
                 }
             }
             refreshTimeout = null;
@@ -77,11 +101,13 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.onDidChangeActiveTextEditor(async (editor) => {
         if (editor && (editor.document.uri.fsPath.endsWith('.log') ||
                       editor.document.uri.fsPath.includes('devmirror-logs'))) {
-            // Apply folding immediately when opening log files
-            setTimeout(async () => {
-                await vscode.commands.executeCommand('editor.foldAll');
-                console.log('Applied folding on open to:', editor.document.uri.fsPath);
-            }, 100);
+            // Apply folding immediately when opening log files if enabled
+            if (autoFold) {
+                setTimeout(async () => {
+                    await vscode.commands.executeCommand('editor.foldAll');
+                    console.log('Applied folding on open to:', editor.document.uri.fsPath);
+                }, 100);
+            }
         }
     });
 
@@ -173,55 +199,55 @@ export function activate(context: vscode.ExtensionContext) {
         // Get the current workspace from status monitor
         const currentWorkspace = statusMonitor.getCurrentWorkspacePath();
 
-        let workspacePath: string;
         if (currentWorkspace) {
             // Use the workspace that's currently being monitored
-            workspacePath = currentWorkspace;
-        } else {
-            // Fall back to first workspace if nothing is being monitored
-            const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
-            if (!workspaceFolder) {
-                return;
-            }
-            workspacePath = workspaceFolder.uri.fsPath;
-        }
+            const logPath = path.join(currentWorkspace, 'devmirror-logs', 'current.log');
+            const uri = vscode.Uri.file(logPath);
 
-        const logPath = path.join(workspacePath, 'devmirror-logs', 'current.log');
-        const uri = vscode.Uri.file(logPath);
+            try {
+                const doc = await vscode.workspace.openTextDocument(uri);
+                const editor = await vscode.window.showTextDocument(doc, {
+                    viewColumn: vscode.ViewColumn.Active,  // Open in active tab, not beside
+                    preserveFocus: false
+                });
 
-        try {
-            const doc = await vscode.workspace.openTextDocument(uri);
-            const editor = await vscode.window.showTextDocument(doc, {
-                viewColumn: vscode.ViewColumn.Active,  // Open in active tab, not beside
-                preserveFocus: false
-            });
+                // Apply settings and scroll to bottom
+                setTimeout(async () => {
+                    if (editor && editor.document.uri.fsPath === logPath) {
+                        // Check current word wrap state and disable if enabled
+                        const config = vscode.workspace.getConfiguration('editor', doc.uri);
+                        const wordWrap = config.get('wordWrap');
+                        if (wordWrap !== 'off') {
+                            await vscode.commands.executeCommand('editor.action.toggleWordWrap');
+                        }
 
-            // Apply settings and scroll to bottom
-            setTimeout(async () => {
-                if (editor && editor.document.uri.fsPath === logPath) {
-                    // Check current word wrap state and disable if enabled
-                    const config = vscode.workspace.getConfiguration('editor', doc.uri);
-                    const wordWrap = config.get('wordWrap');
-                    if (wordWrap !== 'off') {
-                        await vscode.commands.executeCommand('editor.action.toggleWordWrap');
+                        // Apply folding if enabled
+                        if (autoFold) {
+                            await vscode.commands.executeCommand('editor.foldAll');
+                        }
+
+                        // Scroll to bottom (tail)
+                        const lastLine = doc.lineCount - 1;
+                        const range = new vscode.Range(lastLine, 0, lastLine, 0);
+                        editor.revealRange(range, vscode.TextEditorRevealType.Default);
+
+                        // Move cursor to end
+                        const position = new vscode.Position(lastLine, 0);
+                        editor.selection = new vscode.Selection(position, position);
                     }
-
-                    // Apply folding
-                    await vscode.commands.executeCommand('editor.foldAll');
-
-                    // Scroll to bottom (tail)
-                    const lastLine = doc.lineCount - 1;
-                    const range = new vscode.Range(lastLine, 0, lastLine, 0);
-                    editor.revealRange(range, vscode.TextEditorRevealType.Default);
-
-                    // Move cursor to end
-                    const position = new vscode.Position(lastLine, 0);
-                    editor.selection = new vscode.Selection(position, position);
-                }
-            }, 200);
-        } catch (error) {
-            vscode.window.showErrorMessage(`Cannot open log file: ${error}`);
+                }, 200);
+            } catch (error) {
+                vscode.window.showErrorMessage(`Cannot open log file: ${error}`);
+            }
+        } else {
+            // No active monitoring, show settings
+            vscode.commands.executeCommand('workbench.action.openSettings', 'devmirror');
         }
+    });
+
+    // Open settings command
+    const openSettingsCommand = vscode.commands.registerCommand('devmirror.openSettings', () => {
+        vscode.commands.executeCommand('workbench.action.openSettings', 'devmirror');
     });
 
     // Register tree view for monorepo support
@@ -252,6 +278,7 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(startCommand);
     context.subscriptions.push(stopCommand);
     context.subscriptions.push(showLogsCommand);
+    context.subscriptions.push(openSettingsCommand);
     context.subscriptions.push(outputChannel);
     context.subscriptions.push(statusMonitor);
 }

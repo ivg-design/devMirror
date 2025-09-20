@@ -2,15 +2,15 @@
 
 **Capture 100% of browser console output using Chrome DevTools Protocol with Puppeteer**
 
-[![Version](https://img.shields.io/badge/version-0.3.7-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.3.8-blue.svg)](CHANGELOG.md)
 [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE.txt)
 
 DevMirror is a production-ready VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## 🚀 Latest Release: v0.3.7
+## 🚀 Latest Release: v0.3.8
 
-Fixed status bar visibility, added auto-refresh for open log files with new content, maintains position or follows tail, and applies folding after refresh. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+Added configurable auto-refresh and auto-fold settings, improved status bar response time, fixed active editor detection, and better multi-workspace support. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Features
 

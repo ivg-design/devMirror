@@ -2,6 +2,18 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.3.8] - 2025-09-20
+
+### Added
+- Configuration settings for auto-refresh and auto-fold
+- DevMirror: Open Settings command
+- Settings open when clicking status bar with no active monitoring
+
+### Fixed
+- Auto-refresh now properly detects active editor
+- Faster status bar response (1 second check interval, 3 second timeout)
+- Better workspace detection for multi-project setups
+
 ## [0.3.7] - 2025-09-20
 
 ### Fixed

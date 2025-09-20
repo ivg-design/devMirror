@@ -3,7 +3,7 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.3.7",
+  "version": "0.3.8",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -46,6 +46,10 @@
         "title": "DevMirror: Show Logs"
       },
       {
+        "command": "devmirror.openSettings",
+        "title": "DevMirror: Open Settings"
+      },
+      {
         "command": "devmirror.addMirrorScript",
         "title": "Add Mirror Script",
         "icon": "$(add)"
@@ -84,6 +88,16 @@
           "type": "string",
           "default": "./devmirror-logs",
           "description": "Directory for log output files"
+        },
+        "devmirror.autoRefresh": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically refresh open log files when new content is written"
+        },
+        "devmirror.autoFold": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically fold log entries in the editor"
         }
       }
     }
