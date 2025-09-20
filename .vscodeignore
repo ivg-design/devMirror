@@ -8,3 +8,11 @@ vsc-extension-quickstart.md
 **/.eslintrc.json
 **/*.map
 **/*.ts
+.git/**
+.github/**
+devMirror/**
+devMirror-*/**
+node_modules/**/test/**
+node_modules/**/tests/**
+*.vsix
+.DS_Store
