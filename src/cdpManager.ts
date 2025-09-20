@@ -68,6 +68,7 @@ export class CDPManager {
                 devtools: true,
                 executablePath: executablePath,
                 userDataDir: userDataDir,  // Persistent profile that remembers DevTools settings
+                defaultViewport: null,  // Use full browser window instead of fixed viewport
                 args: [
                     '--auto-open-devtools-for-tabs',
                     '--start-maximized',  // Start Chrome maximized

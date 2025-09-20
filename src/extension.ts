@@ -99,18 +99,21 @@ export function activate(context: vscode.ExtensionContext) {
 
         try {
             const doc = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(doc, {
+            const editor = await vscode.window.showTextDocument(doc, {
                 viewColumn: vscode.ViewColumn.Beside,
                 preserveFocus: false
             });
 
-            // Apply folding to collapse console lines after a small delay
-            setTimeout(() => {
-                const editor = vscode.window.activeTextEditor;
+            // Apply folding to collapse console lines
+            // Need to wait for the editor to be fully ready
+            setTimeout(async () => {
                 if (editor && editor.document.uri.fsPath === logPath) {
-                    vscode.commands.executeCommand('editor.foldAll');
+                    // First unfold all to reset state
+                    await vscode.commands.executeCommand('editor.unfoldAll');
+                    // Then fold at level 1 (folds all top-level log entries)
+                    await vscode.commands.executeCommand('editor.foldLevel1');
                 }
-            }, 100);
+            }, 200);
         } catch (error) {
             vscode.window.showErrorMessage(`Cannot open log file: ${error}`);
         }

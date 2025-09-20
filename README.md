@@ -1,10 +1,16 @@
-# DevMirror - Browser Console Capture Extension v0.2.7
+# DevMirror - Browser Console Capture Extension v0.2.8
 
 **Capture 100% of browser console output using Chrome DevTools Protocol**
 
 DevMirror is a VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## New in v0.2.7
+## New in v0.2.8
+
+- **Fixed Viewport** - Chrome now uses full window size with `defaultViewport: null`
+- **Improved Log Folding** - Uses `foldLevel1` command for consistent folding
+- **Better Editor Timing** - Increased delay for reliable fold operations
+
+## v0.2.7
 
 - **Auto Config Creation** - Automatically creates devmirror.config.json for nested packages
 - **Smart Port Detection** - Detects dev server port from scripts, .env, or framework defaults
