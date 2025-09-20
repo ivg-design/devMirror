@@ -37,11 +37,16 @@ export class LogWriter {
             this.writeStream.end();
         }
 
-        const timestamp = new Date().toISOString()
-            .replace(/[:.]/g, '-')
-            .replace('T', '-')
-            .replace('Z', '');
+        const date = new Date();
+        // Format filename: YYYY-MM-DD-HHMMSS.log (local time)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
 
+        const timestamp = `${year}-${month}-${day}-${hours}${minutes}${seconds}`;
         this.currentLogPath = path.join(this.outputDir, `${timestamp}.log`);
         this.writeStream = createWriteStream(this.currentLogPath, { flags: 'a' });
         this.logSize = 0;
@@ -82,7 +87,18 @@ export class LogWriter {
     }
 
     private formatEntry(entry: LogEntry): string {
-        const timestamp = new Date(entry.timestamp).toISOString();
+        const date = new Date(entry.timestamp);
+
+        // Format: YYYY-MM-DD HH:MM:SS.m (single digit milliseconds)
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        const seconds = String(date.getSeconds()).padStart(2, '0');
+        const ms = Math.floor(date.getMilliseconds() / 100); // Single digit (0-9)
+
+        const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${ms}`;
         const prefix = `[${timestamp}]`;
 
         let typeLabel = entry.type.toUpperCase();

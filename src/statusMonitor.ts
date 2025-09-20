@@ -9,6 +9,7 @@ export class StatusMonitor {
     private updateInterval: NodeJS.Timeout | null = null;
     private logFilePath: string | null = null;
     private lastSize: number = 0;
+    private watchInterval: NodeJS.Timeout | null = null;
 
     constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
@@ -16,6 +17,72 @@ export class StatusMonitor {
             100
         );
         this.statusBarItem.command = 'devmirror.showLogs';
+
+        // Start watching for CLI instances
+        this.startWatching();
+    }
+
+    private startWatching(): void {
+        // Check every 2 seconds for CLI status files
+        this.watchInterval = setInterval(() => {
+            this.checkForCLIInstances();
+        }, 2000);
+
+        // Check immediately
+        this.checkForCLIInstances();
+    }
+
+    private async checkForCLIInstances(): Promise<void> {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders) return;
+
+        let foundActive = false;
+        for (const folder of workspaceFolders) {
+            const statusPath = path.join(folder.uri.fsPath, 'devmirror-logs', '.devmirror-status.json');
+            try {
+                const stats = fs.statSync(statusPath);
+                // Check if file is recent (updated in last 5 seconds)
+                if (Date.now() - stats.mtimeMs < 5000) {
+                    const statusData = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+                    foundActive = true;
+
+                    // Start monitoring if not already
+                    if (!this.updateInterval) {
+                        this.startFromCLI(folder.uri.fsPath, statusData.startTime);
+                    }
+                    break;
+                }
+            } catch {
+                // Status file doesn't exist or is old
+            }
+        }
+
+        // No active CLI instances found
+        if (!foundActive && this.updateInterval) {
+            this.stop();
+        }
+    }
+
+    private startFromCLI(workspacePath: string, startTimeMs: number): void {
+        this.startTime = new Date(startTimeMs);
+        this.logCount = 0;
+        this.lastSize = 0;
+
+        const logDir = path.join(workspacePath, 'devmirror-logs');
+        const currentLogPath = path.join(logDir, 'current.log');
+        this.logFilePath = currentLogPath;
+
+        this.statusBarItem.text = '🔴 DevMirror: Starting...';
+        this.statusBarItem.show();
+
+        // Update every second
+        if (!this.updateInterval) {
+            this.updateInterval = setInterval(() => {
+                this.updateStatus();
+            }, 1000);
+        }
+
+        this.updateStatus();
     }
 
     start(workspacePath: string): void {
@@ -87,6 +154,10 @@ export class StatusMonitor {
 
     dispose(): void {
         this.stop();
+        if (this.watchInterval) {
+            clearInterval(this.watchInterval);
+            this.watchInterval = null;
+        }
         this.statusBarItem.dispose();
     }
 }

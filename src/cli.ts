@@ -43,20 +43,49 @@ async function main() {
         manager = new CDPManager();
     }
 
+    // Write a status file so VS Code extension can detect we're running
+    const statusFile = path.join(config.outputDir, '.devmirror-status.json');
+    const writeStatus = () => {
+        try {
+            fs.writeFileSync(statusFile, JSON.stringify({
+                pid: process.pid,
+                startTime: Date.now(),
+                url: config.url
+            }));
+        } catch {}
+    };
+
+    // Create output dir if needed
+    if (!fs.existsSync(config.outputDir)) {
+        fs.mkdirSync(config.outputDir, { recursive: true });
+    }
+
+    writeStatus();
+
+    // Update status file periodically
+    const statusInterval = setInterval(writeStatus, 1000);
+
     try {
         await manager.start(config);
     } catch (error) {
         console.error('❌ Failed to start DevMirror:', error);
+        clearInterval(statusInterval);
+        // Clean up status file on error
+        try { fs.unlinkSync(statusFile); } catch {}
         process.exit(1);
     }
 
     process.on('SIGINT', async () => {
         console.log('\n\n🛑 Shutting down DevMirror...');
+        clearInterval(statusInterval);
+        try { fs.unlinkSync(statusFile); } catch {}
         await manager.stop();
         process.exit(0);
     });
 
     process.on('SIGTERM', async () => {
+        clearInterval(statusInterval);
+        try { fs.unlinkSync(statusFile); } catch {}
         await manager.stop();
         process.exit(0);
     });

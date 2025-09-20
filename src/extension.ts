@@ -12,6 +12,34 @@ export function activate(context: vscode.ExtensionContext) {
     const statusMonitor = new StatusMonitor();
     const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
 
+    // Watch for log file changes and apply folding with debouncing
+    const logWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/current.log');
+
+    let foldTimeout: NodeJS.Timeout | null = null;
+
+    logWatcher.onDidChange(async (uri) => {
+        // Clear existing timeout
+        if (foldTimeout) {
+            clearTimeout(foldTimeout);
+        }
+
+        // Set new timeout to fold after 500ms of no changes
+        foldTimeout = setTimeout(async () => {
+            // Check if file is currently open in editor
+            const editors = vscode.window.visibleTextEditors;
+            for (const editor of editors) {
+                if (editor.document.uri.fsPath === uri.fsPath) {
+                    // Apply folding after writes have settled
+                    await vscode.commands.executeCommand('editor.foldAll');
+                    break;
+                }
+            }
+            foldTimeout = null;
+        }, 500);
+    });
+
+    context.subscriptions.push(logWatcher);
+
     // Setup command
     const setupCommand = vscode.commands.registerCommand('devmirror.setup', async () => {
         try {
@@ -108,10 +136,7 @@ export function activate(context: vscode.ExtensionContext) {
             // Need to wait for the editor to be fully ready
             setTimeout(async () => {
                 if (editor && editor.document.uri.fsPath === logPath) {
-                    // First unfold all to reset state
-                    await vscode.commands.executeCommand('editor.unfoldAll');
-                    // Then fold at level 1 (folds all top-level log entries)
-                    await vscode.commands.executeCommand('editor.foldLevel1');
+                    await vscode.commands.executeCommand('editor.foldAll');
                 }
             }, 200);
         } catch (error) {
