@@ -12,43 +12,65 @@ export function activate(context: vscode.ExtensionContext) {
     const statusMonitor = new StatusMonitor();
     const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
 
-    // Watch for log file changes and apply folding with debouncing
+    // Watch for log file changes and apply refresh/folding with debouncing
     const logWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/*.log');
     const currentLogWatcher = vscode.workspace.createFileSystemWatcher('**/devmirror-logs/current.log');
 
-    let foldTimeout: NodeJS.Timeout | null = null;
+    let refreshTimeout: NodeJS.Timeout | null = null;
 
-    const applyFolding = async (uri: vscode.Uri) => {
+    const refreshAndFold = async (uri: vscode.Uri) => {
         // Clear existing timeout
-        if (foldTimeout) {
-            clearTimeout(foldTimeout);
+        if (refreshTimeout) {
+            clearTimeout(refreshTimeout);
         }
 
-        // Set new timeout to fold after 1 second of no changes
-        foldTimeout = setTimeout(async () => {
+        // Set new timeout to refresh and fold after 1.5 seconds of no changes
+        refreshTimeout = setTimeout(async () => {
             // Check if file is currently open in editor
             const editors = vscode.window.visibleTextEditors;
             for (const editor of editors) {
                 if (editor.document.uri.fsPath === uri.fsPath ||
                     (uri.fsPath.includes('devmirror-logs') &&
                      editor.document.uri.fsPath.includes('devmirror-logs'))) {
-                    // Save cursor position
-                    const position = editor.selection.active;
 
-                    // Apply folding after writes have settled
+                    // Save current position
+                    const position = editor.selection.active;
+                    const wasAtBottom = position.line >= editor.document.lineCount - 5;
+
+                    // Revert (refresh) the file to get latest content
+                    await vscode.commands.executeCommand('workbench.action.files.revert');
+
+                    // Wait a bit for the revert to complete
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    // Apply folding
                     await vscode.commands.executeCommand('editor.foldAll');
 
-                    // Restore cursor and reveal it
-                    const newSelection = new vscode.Selection(position, position);
-                    editor.selection = newSelection;
-                    editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+                    // If user was at bottom, scroll to new bottom
+                    if (wasAtBottom) {
+                        const newLastLine = editor.document.lineCount - 1;
+                        const newPosition = new vscode.Position(newLastLine, 0);
+                        editor.selection = new vscode.Selection(newPosition, newPosition);
+                        editor.revealRange(
+                            new vscode.Range(newPosition, newPosition),
+                            vscode.TextEditorRevealType.Default
+                        );
+                    } else {
+                        // Otherwise restore previous position
+                        const newSelection = new vscode.Selection(position, position);
+                        editor.selection = newSelection;
+                        editor.revealRange(
+                            new vscode.Range(position, position),
+                            vscode.TextEditorRevealType.InCenter
+                        );
+                    }
 
-                    console.log('Applied folding to:', editor.document.uri.fsPath);
+                    console.log('Refreshed and folded:', editor.document.uri.fsPath);
                     break;
                 }
             }
-            foldTimeout = null;
-        }, 1000);
+            refreshTimeout = null;
+        }, 1500);
     };
 
     // Also watch when files are opened
@@ -63,10 +85,10 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    logWatcher.onDidChange(applyFolding);
-    currentLogWatcher.onDidChange(applyFolding);
-    logWatcher.onDidCreate(applyFolding);
-    currentLogWatcher.onDidCreate(applyFolding);
+    logWatcher.onDidChange(refreshAndFold);
+    currentLogWatcher.onDidChange(refreshAndFold);
+    logWatcher.onDidCreate(refreshAndFold);
+    currentLogWatcher.onDidCreate(refreshAndFold);
 
     context.subscriptions.push(logWatcher);
     context.subscriptions.push(currentLogWatcher);

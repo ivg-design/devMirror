@@ -21,7 +21,7 @@ export class StatusMonitor {
         this.statusBarItem.command = 'devmirror.showLogs';
         this.statusBarItem.text = 'DevMirror';
         this.statusBarItem.tooltip = 'DevMirror - Click to view logs';
-        this.statusBarItem.hide();  // Start hidden when not running
+        this.statusBarItem.show();  // Always show the status bar
 
         // Start watching for CLI instances
         this.startWatching();
@@ -168,7 +168,9 @@ export class StatusMonitor {
             this.updateInterval = null;
         }
 
-        this.statusBarItem.hide();
+        this.statusBarItem.text = 'DevMirror';
+        this.statusBarItem.tooltip = 'DevMirror - Click to start capture';
+        this.statusBarItem.show();
         this.startTime = null;
         this.logCount = 0;
         this.currentWorkspacePath = null;

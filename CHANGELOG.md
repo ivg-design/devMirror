@@ -2,6 +2,15 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.3.7] - 2025-09-20
+
+### Fixed
+- Status bar now always visible (was being hidden incorrectly)
+- Added auto-refresh for open log files when new content arrives
+- Auto-refresh debounced to 1.5 seconds to prevent spamming
+- Maintains scroll position or follows tail if at bottom
+- Applies folding after each refresh
+
 ## [0.3.6] - 2025-09-20
 
 ### Fixed
