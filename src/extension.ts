@@ -23,7 +23,6 @@ export function activate(context: vscode.ExtensionContext) {
                     const args = JSON.parse(body);
                     console.log('DevMirror activation received:', args);
                     statusMonitor.activate(args);
-                    setupFileWatchers();
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ status: 'activated' }));
                 } catch (error) {
@@ -66,38 +65,16 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // File watching with nodemon-style approach
-    let fileWatchers: vscode.FileSystemWatcher[] = [];
+    // File refresh control
     let refreshTimeout: NodeJS.Timeout | null = null;
-    let lastLogPath: string | null = null;
 
-    // Function to set up file watchers for active log
-    const setupFileWatchers = () => {
-        // Clean up existing watchers
-        fileWatchers.forEach(w => w.dispose());
-        fileWatchers = [];
-
+    // Set up the log change callback
+    statusMonitor.onLogChange(() => {
         const logPath = statusMonitor.getCurrentLogPath();
-        if (!logPath) return;
-
-        // Only set up watcher if the log path changed
-        if (logPath === lastLogPath) return;
-        lastLogPath = logPath;
-
-        // Watch the specific log file
-        const logWatcher = vscode.workspace.createFileSystemWatcher(logPath);
-        fileWatchers.push(logWatcher);
-
-        // Also watch the directory for new log files
-        const dirPath = path.dirname(logPath);
-        const dirWatcher = vscode.workspace.createFileSystemWatcher(path.join(dirPath, '*.log'));
-        fileWatchers.push(dirWatcher);
-
-        logWatcher.onDidChange(uri => refreshAndFold(uri));
-        dirWatcher.onDidCreate(uri => refreshAndFold(uri));
-    };
-
-    // File watcher setup is now triggered by the activate command
+        if (logPath && autoRefresh) {
+            refreshAndFold(vscode.Uri.file(logPath));
+        }
+    });
 
     const refreshAndFold = async (uri: vscode.Uri) => {
         if (!autoRefresh) return;
@@ -177,9 +154,6 @@ export function activate(context: vscode.ExtensionContext) {
             }
         }
     });
-
-    // Initial setup
-    setupFileWatchers();
 
     // Setup command
     const setupCommand = vscode.commands.registerCommand('devmirror.setup', async () => {
@@ -342,7 +316,6 @@ export function activate(context: vscode.ExtensionContext) {
     context.subscriptions.push(outputChannel);
     context.subscriptions.push(statusMonitor);
     context.subscriptions.push(new vscode.Disposable(() => {
-        fileWatchers.forEach(w => w.dispose());
         server.close();
     }));
 }

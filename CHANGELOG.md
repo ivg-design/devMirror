@@ -2,6 +2,13 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.2] - 2025-09-20
+
+### Fixed
+- Auto-refresh now triggers correctly when log count changes
+- Uses the same mechanism as status bar updates for consistent behavior
+- Settings for autoRefresh and autoFold properly configured
+
 ## [0.4.1] - 2025-09-20
 
 ### Fixed

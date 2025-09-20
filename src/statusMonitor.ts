@@ -11,11 +11,14 @@ interface ActiveSession {
     lastSize: number;
 }
 
+type LogChangeCallback = () => void;
+
 export class StatusMonitor {
     private statusBarItem: vscode.StatusBarItem;
     private activeSession: ActiveSession | null = null;
     private updateInterval: NodeJS.Timeout | null = null;
     private pidCheckInterval: NodeJS.Timeout | null = null;
+    private onLogChangeCallback: LogChangeCallback | null = null;
 
     constructor() {
         this.statusBarItem = vscode.window.createStatusBarItem(
@@ -123,7 +126,14 @@ export class StatusMonitor {
                     const content = fs.readFileSync(logPath, 'utf8');
                     const lines = content.split('\n').filter((line: string) => line.trim());
                     // Count actual log entries (lines starting with [)
-                    this.activeSession.logCount = lines.filter((line: string) => line.startsWith('[')).length;
+                    const newLogCount = lines.filter((line: string) => line.startsWith('[')).length;
+
+                    // Trigger callback if log count changed
+                    if (newLogCount !== this.activeSession.logCount && this.onLogChangeCallback) {
+                        this.onLogChangeCallback();
+                    }
+
+                    this.activeSession.logCount = newLogCount;
                     this.activeSession.lastSize = stats.size;
                 }
             }
@@ -164,6 +174,10 @@ Click to open log file`;
 
     getCurrentWorkspacePath(): string | null {
         return this.activeSession?.path || null;
+    }
+
+    onLogChange(callback: LogChangeCallback): void {
+        this.onLogChangeCallback = callback;
     }
 
     dispose(): void {
