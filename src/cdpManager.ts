@@ -1083,15 +1083,30 @@ export class CDPManager {
 
                 // NOW enable the CDP domains
                 console.log('   Enabling CDP domains...');
+
+                // FIRST: Enable Console domain to get BUFFERED messages from before we connected
+                await this.client.send('Console.enable');
+                console.log('   ✅ Console.enable sent - buffered messages should arrive...');
+
+                // Give a moment for buffered messages to arrive
+                await new Promise(resolve => setTimeout(resolve, 100));
+
+                // THEN: Disable Console domain to avoid duplicates going forward
+                await this.client.send('Console.disable');
+                console.log('   ✅ Console.disable sent - no more duplicates');
+
+                // Enable Runtime for ongoing console capture with stackTrace
                 await this.client.send('Runtime.enable');  // This gives us Runtime.consoleAPICalled with stackTrace
-                // DON'T enable Console.enable or Log.enable - they send duplicate events!
-                // await this.client.send('Console.enable');  // Would send Console.messageAdded (duplicate)
-                // await this.client.send('Log.enable');      // Would send Log.entryAdded (duplicate)
                 await this.client.send('Network.enable');
                 await this.client.send('Page.enable');
 
                 console.log('   ✅ CDP domains enabled - handlers ready');
                 console.log('   ✅ Connected to CEF console via CDP - capturing all output');
+
+                // OPTIONAL: Reload the page to capture from the beginning
+                // Uncomment the next lines if you want to force a reload to capture all startup logs
+                // console.log('   🔄 Reloading extension to capture from start...');
+                // await this.client.send('Page.reload', { ignoreCache: false });
 
                 // Store WebSocket for cleanup
                 let reconnectTimer: NodeJS.Timeout | null = null;

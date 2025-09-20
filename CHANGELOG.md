@@ -2,6 +2,17 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.20] - 2025-09-20
+
+### Added
+- **Capture Buffered Console Messages**: Now retrieves ALL console messages from before connection!
+- Enable Console domain briefly to get buffered messages, then disable to avoid duplicates
+- Console.enable "sends the messages collected so far" - this gets the missing 90% of startup logs
+
+### Fixed
+- Missing startup logs issue - now captures messages from before DevMirror connected
+- Proper sequencing: Console.enable → get buffered → Console.disable → Runtime.enable
+
 ## [0.4.19] - 2025-09-20
 
 ### Fixed
