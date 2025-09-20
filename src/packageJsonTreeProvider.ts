@@ -181,7 +181,7 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                                   vscode.extensions.getExtension('devmirror')?.extensionPath;
 
             if (extensionPath) {
-                const wrapperSrc = path.join(extensionPath, 'src', 'devmirror-cli-wrapper.js');
+                const wrapperSrc = path.join(extensionPath, 'out', 'devmirror-cli-wrapper.js');
                 const binDir = path.join(packageDir, 'node_modules', '.bin');
 
                 // Ensure .bin directory exists
