@@ -78,7 +78,9 @@ export class CDPManager {
                 ]
             });
 
-            this.page = await this.browser.newPage();
+            // Get the first page (avoid creating extra blank tab)
+            const pages = await this.browser.pages();
+            this.page = pages[0] || await this.browser.newPage();
 
             await this.setupListeners();
 

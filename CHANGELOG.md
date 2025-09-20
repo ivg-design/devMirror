@@ -2,6 +2,12 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.3] - 2025-09-20
+
+### Fixed
+- Chrome no longer opens with a blank tab - uses existing tab instead
+- Settings now properly exposed in VS Code settings UI
+
 ## [0.4.2] - 2025-09-20
 
 ### Fixed
