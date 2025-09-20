@@ -3,7 +3,7 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -17,6 +17,17 @@
   ],
   "main": "./out/extension.js",
   "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "devmirrorPackages",
+          "name": "DevMirror Scripts",
+          "icon": "$(mirror)",
+          "contextualTitle": "DevMirror Scripts",
+          "when": "workbenchState != empty"
+        }
+      ]
+    },
     "commands": [
       {
         "command": "devmirror.setup",
@@ -33,8 +44,34 @@
       {
         "command": "devmirror.showLogs",
         "title": "DevMirror: Show Logs"
+      },
+      {
+        "command": "devmirror.addMirrorScript",
+        "title": "Add Mirror Script",
+        "icon": "$(add)"
+      },
+      {
+        "command": "devmirror.refreshPackages",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "devmirror.refreshPackages",
+          "when": "view == devmirrorPackages",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "devmirror.addMirrorScript",
+          "when": "view == devmirrorPackages && viewItem == script",
+          "group": "inline"
+        }
+      ]
+    },
     "configuration": {
       "title": "DevMirror",
       "properties": {

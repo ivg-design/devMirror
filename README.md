@@ -1,10 +1,17 @@
-# DevMirror - Browser Console Capture Extension v0.2.5
+# DevMirror - Browser Console Capture Extension v0.2.6
 
 **Capture 100% of browser console output using Chrome DevTools Protocol**
 
 DevMirror is a VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## New in v0.2.5
+## New in v0.2.6
+
+- **Monorepo Support** - Tree view in Explorer showing all package.json files
+- **Script Manager** - Add :mirror scripts to any dev/start script with one click
+- **Fixed Log Folding** - Logs now properly open with collapsed entries
+- **Chrome Maximized** - Browser launches maximized to prevent viewport constraints
+
+## v0.2.5
 
 - **Flexible puppeteer-core loading** - Supports global and project-local installations
 - **Better error messages** - Clear instructions when puppeteer-core is missing
@@ -62,6 +69,21 @@ DevMirror is a VS Code extension that captures ALL browser console output, netwo
 This creates:
 - `devmirror.config.json` - Configuration file
 - Modified `package.json` - Adds `:mirror` scripts
+
+### Monorepo Support
+
+DevMirror now includes a **DevMirror Scripts** panel in the Explorer sidebar:
+
+1. **View All package.json Files** - Automatically discovers all package.json files in your workspace
+2. **One-Click Mirror Scripts** - Click the + button next to any dev/start script to add a :mirror version
+3. **Auto-Detection** - Only shows scripts that don't already have mirror versions
+4. **Dependency Check** - Automatically prompts to install `concurrently` if missing
+
+To use:
+- Look for "DevMirror Scripts" in your Explorer sidebar
+- Expand any package.json to see available scripts
+- Click the + button to add a mirror script
+- Use the refresh button to update the list
 
 ### Daily Development
 

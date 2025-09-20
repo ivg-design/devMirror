@@ -5,6 +5,7 @@ import { ScriptModifier } from './scriptModifier';
 import { StatusMonitor } from './statusMonitor';
 import { DevMirrorLauncher } from './devmirror-launcher';
 import { PuppeteerChecker } from './puppeteerChecker';
+import { PackageJsonTreeProvider } from './packageJsonTreeProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     const outputChannel = vscode.window.createOutputChannel('DevMirror');
@@ -103,15 +104,41 @@ export function activate(context: vscode.ExtensionContext) {
                 preserveFocus: false
             });
 
-            // Apply folding to collapse console lines
-            const editor = vscode.window.activeTextEditor;
-            if (editor && editor.document.uri.fsPath === logPath) {
-                vscode.commands.executeCommand('editor.foldAll');
-            }
+            // Apply folding to collapse console lines after a small delay
+            setTimeout(() => {
+                const editor = vscode.window.activeTextEditor;
+                if (editor && editor.document.uri.fsPath === logPath) {
+                    vscode.commands.executeCommand('editor.foldAll');
+                }
+            }, 100);
         } catch (error) {
             vscode.window.showErrorMessage(`Cannot open log file: ${error}`);
         }
     });
+
+    // Register tree view for monorepo support
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (workspaceFolder) {
+        const treeProvider = new PackageJsonTreeProvider(workspaceFolder.uri.fsPath);
+        const treeView = vscode.window.createTreeView('devmirrorPackages', {
+            treeDataProvider: treeProvider,
+            showCollapseAll: true
+        });
+
+        // Command to add mirror script from tree view
+        const addMirrorCommand = vscode.commands.registerCommand('devmirror.addMirrorScript', async (item) => {
+            await treeProvider.addMirrorScript(item);
+        });
+
+        // Command to refresh tree view
+        const refreshTreeCommand = vscode.commands.registerCommand('devmirror.refreshPackages', () => {
+            treeProvider.refresh();
+        });
+
+        context.subscriptions.push(treeView);
+        context.subscriptions.push(addMirrorCommand);
+        context.subscriptions.push(refreshTreeCommand);
+    }
 
     context.subscriptions.push(setupCommand);
     context.subscriptions.push(startCommand);

@@ -70,6 +70,7 @@ export class CDPManager {
                 userDataDir: userDataDir,  // Persistent profile that remembers DevTools settings
                 args: [
                     '--auto-open-devtools-for-tabs',
+                    '--start-maximized',  // Start Chrome maximized
                     '--disable-background-timer-throttling',
                     '--disable-backgrounding-occluded-windows',
                     '--disable-renderer-backgrounding'
