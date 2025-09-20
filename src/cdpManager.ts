@@ -1084,18 +1084,8 @@ export class CDPManager {
                 // NOW enable the CDP domains
                 console.log('   Enabling CDP domains...');
 
-                // FIRST: Enable Console domain to get BUFFERED messages from before we connected
-                await this.client.send('Console.enable');
-                console.log('   ✅ Console.enable sent - buffered messages should arrive...');
-
-                // Give a moment for buffered messages to arrive
-                await new Promise(resolve => setTimeout(resolve, 100));
-
-                // THEN: Disable Console domain to avoid duplicates going forward
-                await this.client.send('Console.disable');
-                console.log('   ✅ Console.disable sent - no more duplicates');
-
-                // Enable Runtime for ongoing console capture with stackTrace
+                // Only enable Runtime - it gives us the best console data with stackTrace
+                // Console.enable only gives partial buffered messages and causes duplicates
                 await this.client.send('Runtime.enable');  // This gives us Runtime.consoleAPICalled with stackTrace
                 await this.client.send('Network.enable');
                 await this.client.send('Page.enable');

@@ -2,6 +2,17 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.21] - 2025-09-20
+
+### Fixed
+- **Removed Console.enable hack**: Console buffer is limited, only gives partial messages
+- Simplified to use only Runtime.enable for clean capture
+- Fixed startup sequence - Vite starts first, then DevMirror
+
+### Improved
+- Cleaner logs without partial buffer dumps
+- Better timing for faster initial connection
+
 ## [0.4.20] - 2025-09-20
 
 ### Added
