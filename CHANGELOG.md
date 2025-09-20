@@ -2,6 +2,19 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.22] - 2025-09-20
+
+### Fixed
+- **CRITICAL FIX**: DevMirror must start FIRST, not second!
+- Proof: Log 161708 captured everything because DevMirror was already running
+- Now starts DevMirror first, waits 5 seconds, then starts Vite
+- This ensures DevMirror is connected BEFORE extension loads
+
+### Corrected
+- Previous "CDP limitation" was wrong - it CAN capture from beginning
+- The issue was timing, not protocol limitations
+- When DevMirror is ready first, it captures 100% of logs
+
 ## [0.4.21] - 2025-09-20
 
 ### Fixed
