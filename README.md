@@ -1,10 +1,15 @@
-# DevMirror - Browser Console Capture Extension v0.2.4
+# DevMirror - Browser Console Capture Extension v0.2.5
 
 **Capture 100% of browser console output using Chrome DevTools Protocol**
 
 DevMirror is a VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## New in v0.2.4
+## New in v0.2.5
+
+- **Flexible puppeteer-core loading** - Supports global and project-local installations
+- **Better error messages** - Clear instructions when puppeteer-core is missing
+
+## v0.2.4
 
 - **Extension ID Fix** - Fixed extension path detection for all publisher ID variations
 

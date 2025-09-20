@@ -1,4 +1,3 @@
-import * as puppeteer from 'puppeteer-core';
 import { LogWriter } from './logWriter';
 import { DevMirrorConfig } from './configHandler';
 import * as crypto from 'crypto';
@@ -7,18 +6,44 @@ import * as os from 'os';
 import * as fs from 'fs';
 
 export class CDPManager {
-    private browser: puppeteer.Browser | null = null;
-    private page: puppeteer.Page | null = null;
+    private browser: any = null;
+    private page: any = null;
     private logWriter: LogWriter;
     private messageCount = new Map<string, number>();
     private lastReset = Date.now();
-    private client: puppeteer.CDPSession | null = null;
+    private client: any = null;
+    private puppeteer: any;
 
     constructor() {
         this.logWriter = new LogWriter('');
     }
 
     async start(config: DevMirrorConfig): Promise<void> {
+        // Try to load puppeteer-core from multiple locations
+        let puppeteerLoaded = false;
+
+        // Try project's node_modules first
+        try {
+            const projectPath = path.join(process.cwd(), 'node_modules', 'puppeteer-core');
+            this.puppeteer = require(projectPath);
+            puppeteerLoaded = true;
+        } catch (error) {
+            // Try global or direct require
+            try {
+                this.puppeteer = require('puppeteer-core');
+                puppeteerLoaded = true;
+            } catch (error2) {
+                // Not found
+            }
+        }
+
+        if (!puppeteerLoaded) {
+            console.error('❌ puppeteer-core not found. Please install it:');
+            console.error('   npm install puppeteer-core');
+            console.error('   or globally: npm install -g puppeteer-core');
+            process.exit(1);
+        }
+
         this.logWriter = new LogWriter(config.outputDir);
         await this.logWriter.initialize();
 
@@ -38,7 +63,7 @@ export class CDPManager {
                 fs.mkdirSync(userDataDir, { recursive: true });
             }
 
-            this.browser = await puppeteer.launch({
+            this.browser = await this.puppeteer.launch({
                 headless: false,
                 devtools: true,
                 executablePath: executablePath,
@@ -88,11 +113,11 @@ export class CDPManager {
         await this.client.send('Security.enable');
         await this.client.send('Page.enable');
 
-        this.client.on('Runtime.consoleAPICalled', (event) => {
+        this.client.on('Runtime.consoleAPICalled', (event: any) => {
             this.handleConsoleMessage(event);
         });
 
-        this.client.on('Runtime.exceptionThrown', (event) => {
+        this.client.on('Runtime.exceptionThrown', (event: any) => {
             this.logWriter.write({
                 type: 'error',
                 message: event.exceptionDetails.text || 'Uncaught exception',
@@ -101,7 +126,7 @@ export class CDPManager {
             });
         });
 
-        this.client.on('Network.loadingFailed', (event) => {
+        this.client.on('Network.loadingFailed', (event: any) => {
             const errorText = event.errorText || 'Unknown error';
             const blockedReason = event.blockedReason;
 
@@ -118,7 +143,7 @@ export class CDPManager {
             });
         });
 
-        this.client.on('Network.responseReceived', (event) => {
+        this.client.on('Network.responseReceived', (event: any) => {
             if (event.response.status >= 400) {
                 this.logWriter.write({
                     type: 'network',
@@ -129,7 +154,7 @@ export class CDPManager {
             }
         });
 
-        this.client.on('Log.entryAdded', (event) => {
+        this.client.on('Log.entryAdded', (event: any) => {
             this.logWriter.write({
                 type: 'browser',
                 level: event.entry.level,
@@ -139,7 +164,7 @@ export class CDPManager {
             });
         });
 
-        this.client.on('Security.securityStateChanged', (event) => {
+        this.client.on('Security.securityStateChanged', (event: any) => {
             if (event.securityState === 'insecure') {
                 const summary = event.summary || 'Security issue detected';
                 this.logWriter.write({
@@ -160,7 +185,7 @@ export class CDPManager {
             });
         });
 
-        this.client.on('Page.frameNavigated', (event) => {
+        this.client.on('Page.frameNavigated', (event: any) => {
             if (event.frame.parentId === undefined) {
                 this.logWriter.write({
                     type: 'lifecycle',
@@ -171,7 +196,7 @@ export class CDPManager {
             }
         });
 
-        this.page.on('pageerror', (error) => {
+        this.page.on('pageerror', (error: any) => {
             this.logWriter.write({
                 type: 'error',
                 message: error.message,
@@ -180,7 +205,7 @@ export class CDPManager {
             });
         });
 
-        this.page.on('error', (error) => {
+        this.page.on('error', (error: any) => {
             this.logWriter.write({
                 type: 'error',
                 message: `Page crashed: ${error.message}`,
@@ -188,7 +213,7 @@ export class CDPManager {
             });
         });
 
-        this.page.on('requestfailed', (request) => {
+        this.page.on('requestfailed', (request: any) => {
             const failure = request.failure();
             if (failure) {
                 this.logWriter.write({
