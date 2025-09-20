@@ -208,12 +208,37 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
 
             // Update if missing required fields
             let updated = false;
-            if (!config.url) {
-                // Try to detect port from package.json scripts
-                const port = await this.detectDevServerPort(packageDir);
-                config.url = `http://localhost:${port}`;
-                updated = true;
+
+            // Check if it's a CEF project by looking for .debug file or cefPort
+            const cefInfo = await this.detectCEFProject(packageDir);
+
+            // If it's a CEF project or has cefPort, ensure proper CEF configuration
+            if (cefInfo.isCEF || config.cefPort) {
+                // Preserve existing cefPort or use detected one
+                if (!config.cefPort && cefInfo.cefPort) {
+                    config.cefPort = cefInfo.cefPort;
+                    updated = true;
+                }
+                // Auto-set mode to CEF if cefPort is present but mode isn't set
+                if (config.cefPort && !config.mode) {
+                    config.mode = 'cef';
+                    updated = true;
+                }
+                // Remove URL for CEF mode as it's not needed
+                if (config.mode === 'cef' && config.url) {
+                    delete config.url;
+                    updated = true;
+                }
+            } else {
+                // CDP mode - ensure URL is set
+                if (!config.url) {
+                    // Try to detect port from package.json scripts
+                    const port = await this.detectDevServerPort(packageDir);
+                    config.url = `http://localhost:${port}`;
+                    updated = true;
+                }
             }
+
             if (!config.outputDir) {
                 config.outputDir = './devmirror-logs';
                 updated = true;
@@ -224,14 +249,67 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
             }
         } catch (error) {
             // Config doesn't exist, create it
-            const port = await this.detectDevServerPort(packageDir);
-            const defaultConfig = {
-                url: `http://localhost:${port}`,
+            const cefInfo = await this.detectCEFProject(packageDir);
+
+            let defaultConfig: any = {
                 outputDir: './devmirror-logs'
             };
 
+            if (cefInfo.isCEF) {
+                // CEF project detected
+                defaultConfig.mode = 'cef';
+                if (cefInfo.cefPort) {
+                    defaultConfig.cefPort = cefInfo.cefPort;
+                } else {
+                    defaultConfig.cefPort = 8860; // Default CEF port
+                    defaultConfig['// comment'] = 'Update cefPort to match your .debug file setting';
+                }
+            } else {
+                // Regular CDP mode
+                const port = await this.detectDevServerPort(packageDir);
+                defaultConfig.url = `http://localhost:${port}`;
+            }
+
             await fs.writeFile(configPath, JSON.stringify(defaultConfig, null, 2), 'utf8');
             vscode.window.showInformationMessage(`Created devmirror.config.json in ${path.basename(packageDir)}`);
+        }
+    }
+
+    private async detectCEFProject(packageDir: string): Promise<{ isCEF: boolean, cefPort?: number }> {
+        try {
+            // Check for .debug file in the project
+            const debugFilePath = path.join(packageDir, '.debug');
+            try {
+                const debugContent = await fs.readFile(debugFilePath, 'utf8');
+                // Look for port in .debug file
+                const portMatch = debugContent.match(/Port="(\d+)"/i);
+                if (portMatch) {
+                    return { isCEF: true, cefPort: parseInt(portMatch[1]) };
+                }
+                // If .debug exists but no port found, it's still a CEF project
+                return { isCEF: true };
+            } catch {
+                // .debug file doesn't exist
+            }
+
+            // Check package.json for CEP/CEF indicators
+            const packageJsonPath = path.join(packageDir, 'package.json');
+            const content = await fs.readFile(packageJsonPath, 'utf8');
+            const packageJson = JSON.parse(content);
+
+            // Look for CEP/CEF indicators in dependencies or name
+            const isCEF =
+                packageJson.name?.toLowerCase().includes('cep') ||
+                packageJson.name?.toLowerCase().includes('cef') ||
+                packageJson.description?.toLowerCase().includes('adobe') ||
+                packageJson.keywords?.some((k: string) => k.toLowerCase().includes('adobe')) ||
+                Object.keys(packageJson.dependencies || {}).some(dep =>
+                    dep.toLowerCase().includes('cep') || dep.toLowerCase().includes('adobe')
+                );
+
+            return { isCEF };
+        } catch {
+            return { isCEF: false };
         }
     }
 

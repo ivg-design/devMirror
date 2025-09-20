@@ -3,7 +3,7 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.4.4",
+  "version": "0.4.17",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -111,7 +111,9 @@
     "test": "vscode-test"
   },
   "dependencies": {
-    "puppeteer-core": "^21.11.0"
+    "@types/ws": "^8.18.1",
+    "puppeteer-core": "^21.11.0",
+    "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/node": "^20.19.17",

@@ -2,6 +2,195 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.17] - 2025-09-20
+
+### Reverted
+- **Reverted Async Object Serialization**: Rolled back to synchronous capture to fix broken logging
+- Console capture now working again with basic object preview
+- Objects show preview properties when available (synchronously)
+
+### Fixed
+- Console logging works again after reverting async changes
+- WebSocket message handler no longer breaks on console events
+
+## [0.4.16] - 2025-09-20
+
+### Fixed
+- **Infinite Navigation Loop**: Fixed CEF auto-navigation getting stuck in infinite loop
+- Added navigation guard flag to prevent concurrent navigation attempts
+- Added return statements after successful navigation to exit early
+- Better URL detection to avoid re-navigating when already on DevTools
+
+### Improved
+- Cleaner navigation flow in CEF mode
+- Prevention of duplicate navigation attempts
+
+## [0.4.15] - 2025-09-20
+
+### Critical Fix
+- **Fixed Missing Dependencies**: Package now includes puppeteer-core and ws dependencies
+- Extension package size restored to ~10MB (was incorrectly 242KB)
+- Puppeteer-core now properly bundled with extension
+
+## [0.4.14] - 2025-09-20
+
+### Fixed
+- **Async Object Serialization**: Fixed async/await handling in captureConsoleEvent
+- Objects are now properly serialized using Runtime.getProperties
+- WebSocket message handler properly handles async console capture
+- Removed terminal CDP event debug logging for cleaner output
+
+### Improved
+- Better object representation in logs showing actual property values
+- Silent error handling for async capture operations
+- Cleaner console output without CDP event spam
+
+## [0.4.13] - 2025-09-20
+
+### Changed
+- **Universal Console Capture**: Complete rewrite to capture ALL console events
+- No longer relies on specific event handlers - captures everything
+- Works with custom loggers and any console method
+- Handles all CDP console-related events: Runtime.consoleAPICalled, Console.messageAdded, Log.entryAdded, Runtime.exceptionThrown
+- Generic fallback for unknown console event types
+
+### Added
+- Universal `captureConsoleEvent()` method that handles all console events
+- Immediate LogWriter initialization in WebSocket connection
+- Support for ANY console method, including custom implementations
+
+### Improved
+- Simplified architecture - no need to register specific handlers
+- More reliable capture - events are caught directly in WebSocket message handler
+- Better support for custom logging libraries and non-standard console methods
+
+## [0.4.12] - 2025-09-20
+
+### Enhanced
+- **Improved Object Capture with Runtime.getProperties**: Better async handling
+- More robust fallback to preview when CDP fetch fails
+- Cleaner JSON representation of complex objects
+- Better error handling for CDP property fetching
+
+## [0.4.11] - 2025-09-20
+
+### Fixed
+- **Object Serialization in Console**: Properly captures object contents instead of `[Object object]`
+- Uses `Runtime.getProperties` to fetch full object structure
+- Handles arrays, objects, and nested properties correctly
+- Shows all object properties with their values in readable format
+
+### Added
+- Deep object inspection for logged objects
+- Array contents displayed as `[item1, item2, ...]`
+- Object contents displayed as `ClassName {prop1: value1, prop2: value2, ...}`
+- Overflow indicator when objects have more properties than shown in preview
+
+### Improved
+- Debug logging shows first 200 characters of captured messages
+- Better handling of functions, undefined, null values
+- Async processing for fetching object properties via CDP
+
+## [0.4.10] - 2025-09-20
+
+### Added
+- **Auto-Navigation to CEF Debug Interface**: Bypasses "Inspectable WebContents" index page
+- Automatically navigates to DevTools frontend URL
+- Handles reconnection scenarios with auto-navigation
+- Monitors for error pages and re-navigates automatically
+
+### Improved
+- CEF debug experience - no manual clicking required
+- Automatic recovery from "This site can't be reached" errors
+- Seamless reconnection when Adobe app restarts
+- Continuous monitoring for index/error pages with auto-correction
+
+## [0.4.9] - 2025-09-20
+
+### Fixed
+- **CEF Limited Protocol Support**: Direct WebSocket connection bypasses Puppeteer browser abstractions
+- Avoids `Target.getBrowserContexts` and other unsupported CEF CDP commands
+- Uses raw WebSocket (ws library) for direct CDP communication
+
+### Added
+- Custom minimal CDP client specifically for CEF compatibility
+- Direct WebSocket message handling for events and commands
+- Proper event registration without browser-level requirements
+
+### Improved
+- CEF connection no longer attempts unsupported browser operations
+- More reliable connection to CEF debug targets
+- Better error handling for CEF-specific limitations
+
+## [0.4.8] - 2025-09-20
+
+### Fixed
+- **CEF Console Capture via CDP WebSocket**: Properly connects to Chrome DevTools Protocol for CEF
+- Uses all CDP event types: `Runtime.consoleAPICalled`, `Log.entryAdded`, `Console.messageAdded`, `Runtime.exceptionThrown`
+- Captures console.log, console.error, JavaScript errors, and all log entries
+
+### Added
+- **Robust Auto-Reconnect**: Monitors multiple disconnection events
+- Handles WebSocket disconnection, CDP session detachment, and target crashes
+- Automatically reconnects every 3 seconds when connection is lost
+- Maintains console capture through Adobe app/extension restarts
+
+### Improved
+- Better debug output showing all available targets and connection status
+- Shows captured log entries in terminal for verification
+- Multiple CDP domains enabled for comprehensive capture
+
+## [0.4.7] - 2025-09-20
+
+### Fixed
+- **CEF Mode Browser Launch**: CEF mode now properly opens Chrome browser to debug interface
+- Unified CDPManager to handle both CDP and CEF modes (removed separate CEFBridge)
+- Auto-detect CEF mode when cefPort is present in config
+
+### Improved
+- Explorer panel now properly detects CEF projects and updates config accordingly
+- Detects .debug files and CEP/CEF indicators in package.json
+- Automatically sets mode to 'cef' when cefPort is configured
+- Config validation ensures proper mode/port combinations
+
+## [0.4.6] - 2025-09-20
+
+### Fixed
+- **CEF Mode Completely Rewritten**: Now properly opens Chrome to debug interface
+- CEF mode navigates to `http://localhost:cefPort` instead of trying CDP connection
+- No longer confuses CEF debug port with dev server ports
+
+### Added
+- **Auto-Reconnect for CEF**: Monitors CEF availability and auto-refreshes
+- Detects when Adobe app/extension restarts and reconnects automatically
+- Shows clear status messages for CEF connection state
+- Stops monitoring once connected to DevTools
+
+### Improved
+- CEF configuration now includes helpful comments and placeholders
+- Better error messages when CEF debugger isn't available
+- Separate Chrome profile for CEF debugging
+
+## [0.4.5] - 2025-09-20
+
+### Added
+- **Auto Port Detection**: Automatically detects running dev servers
+- Scans common ports (3000, 5173, 8080, etc.)
+- Checks package.json scripts for port configurations
+- New `autoDetectPort` config option
+- URL is now optional in config - can be auto-detected
+
+### Fixed
+- Fixed "Requesting main frame too early" error
+- Added page initialization wait and recovery mechanism
+- Handles page recreation when frame isn't ready
+- Better support for CEP/Vite projects with dynamic ports
+
+### Improved
+- More robust page initialization with document check
+- Recovers from frame errors during retry loop
+- Flexible port configuration for CEF debugging
+
 ## [0.4.4] - 2025-09-20
 
 ### Added

@@ -2,11 +2,12 @@ import * as fs from 'fs/promises';
 import * as path from 'path';
 
 export interface DevMirrorConfig {
-    url: string;
+    url?: string;  // Optional - can be auto-detected
     outputDir: string;
     chromePath?: string;
     mode: 'cdp' | 'cef';
     cefPort?: number;
+    autoDetectPort?: boolean;  // Auto-detect running dev server
     throttle?: {
         maxPerSecond: number;
         suppressAfter: number;
@@ -19,6 +20,9 @@ export class ConfigHandler {
         url: 'http://localhost:3000',
         outputDir: './devmirror-logs',
         mode: 'cdp',
+        // For CEF mode, uncomment and set your debug port:
+        // mode: 'cef',
+        // cefPort: 8860,  // Your CEF debug port from .debug file
         throttle: {
             maxPerSecond: 100,
             suppressAfter: 100

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 
 import { CDPManager } from './cdpManager';
-import { CEFBridge } from './cefBridge';
 import { ConfigHandler, DevMirrorConfig } from './configHandler';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -34,14 +33,20 @@ async function main() {
         process.exit(1);
     }
 
-    let manager: CDPManager | CEFBridge;
+    // Auto-detect CEF mode if cefPort is provided but mode is not set
+    if (!config.mode && config.cefPort) {
+        config.mode = 'cef';
+    } else if (!config.mode) {
+        config.mode = 'cdp';
+    }
+
+    // Use CDPManager for both modes - it handles CEF mode internally
+    const manager = new CDPManager();
 
     if (config.mode === 'cef') {
         console.log('🎨 Running in Adobe CEF mode');
-        manager = new CEFBridge();
     } else {
         console.log('🌐 Running in Chrome CDP mode');
-        manager = new CDPManager();
     }
 
     // Get the package path from environment variable
