@@ -2,6 +2,17 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.4] - 2025-09-20
+
+### Added
+- Retry logic with exponential backoff for dev server connection
+- Waits up to 10 attempts for server to start before failing
+- Shows progress messages while waiting for server
+
+### Fixed
+- DevMirror now handles slow-starting dev servers gracefully
+- No longer fails immediately if server isn't ready
+
 ## [0.4.3] - 2025-09-20
 
 ### Fixed

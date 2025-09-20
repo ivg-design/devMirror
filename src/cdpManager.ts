@@ -84,7 +84,29 @@ export class CDPManager {
 
             await this.setupListeners();
 
-            await this.page.goto(config.url, { waitUntil: 'domcontentloaded' });
+            // Try to connect with retries (server might be starting)
+            const maxRetries = 10;
+            let retries = 0;
+            let connected = false;
+
+            while (retries < maxRetries && !connected) {
+                try {
+                    await this.page.goto(config.url, {
+                        waitUntil: 'domcontentloaded',
+                        timeout: 5000
+                    });
+                    connected = true;
+                } catch (error: any) {
+                    retries++;
+                    if (error.message.includes('ERR_CONNECTION_REFUSED') && retries < maxRetries) {
+                        console.log(`├─ Waiting for dev server... (attempt ${retries}/${maxRetries})`);
+                        // Exponential backoff: 1s, 2s, 4s, etc.
+                        await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(2, retries - 1), 10000)));
+                    } else {
+                        throw error;
+                    }
+                }
+            }
 
             console.log('\n✅ DevMirror capturing all console output');
 
