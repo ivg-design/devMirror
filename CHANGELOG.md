@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.39] - 2025-09-21
+
+### Improved
+- Simplified log format - removed redundant CONSOLE: prefix
+- Compact timestamp format: yymmddThh:mm:ss.ms (2-digit milliseconds)
+- JSON objects now properly indented for clean code folding
+- Much cleaner and more readable logs
+
 ## [0.4.38] - 2025-09-21
 
 ### Fixed

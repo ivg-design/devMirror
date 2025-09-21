@@ -756,8 +756,20 @@ export class CDPManager {
                         return `${arg.className || 'Object'} {${props}${overflow}}`;
                     }
 
-                    // Handle description
+                    // Handle description (including JSON objects)
                     if (arg.description) {
+                        // Check if it's a JSON object and format it properly
+                        if (arg.description.startsWith('{') && arg.description.endsWith('}')) {
+                            try {
+                                // Parse and re-stringify with proper indentation
+                                const obj = JSON.parse(arg.description);
+                                // Use 2-space indentation and ensure closing brace is aligned
+                                return JSON.stringify(obj, null, 2);
+                            } catch {
+                                // Not valid JSON, return as-is
+                                return arg.description;
+                            }
+                        }
                         return arg.description;
                     }
 

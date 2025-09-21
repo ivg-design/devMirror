@@ -89,21 +89,22 @@ export class LogWriter {
     private formatEntry(entry: LogEntry): string {
         const date = new Date(entry.timestamp);
 
-        // Format: YYYY-MM-DD HH:MM:SS.m (single digit milliseconds)
-        const year = date.getFullYear();
+        // Format: yymmddThh:mm:ss.ms (two digit milliseconds)
+        const year = String(date.getFullYear()).slice(-2);  // Last 2 digits of year
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         const hours = String(date.getHours()).padStart(2, '0');
         const minutes = String(date.getMinutes()).padStart(2, '0');
         const seconds = String(date.getSeconds()).padStart(2, '0');
-        const ms = Math.floor(date.getMilliseconds() / 100); // Single digit (0-9)
+        const ms = String(Math.floor(date.getMilliseconds() / 10)).padStart(2, '0'); // Two digits (00-99)
 
-        const timestamp = `${year}-${month}-${day} ${hours}:${minutes}:${seconds}.${ms}`;
+        const timestamp = `${year}${month}${day}T${hours}:${minutes}:${seconds}.${ms}`;
         const prefix = `[${timestamp}]`;
 
         let typeLabel = entry.type.toUpperCase();
         if (entry.type === 'console' && entry.method) {
-            typeLabel = `CONSOLE:${entry.method.toUpperCase()}`;
+            // Drop the CONSOLE: prefix, just use the method
+            typeLabel = entry.method.toUpperCase();
         } else if (entry.type === 'network') {
             typeLabel = 'NETWORK:ERROR';
         } else if (entry.type === 'browser' && entry.level) {
