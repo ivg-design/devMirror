@@ -768,16 +768,21 @@ export class CDPManager {
                                 const formatted = JSON.stringify(obj, null, 2);
                                 // Split into lines and properly indent
                                 const lines = formatted.split('\n');
-                                // Don't indent first line, indent all others including closing bracket
+                                // Process each line
                                 const indented = lines.map((line, i) => {
                                     if (i === 0) return line;  // First line stays inline
-                                    // Check if this is a closing bracket/brace (only character on line)
-                                    if (line.trim() === '}' || line.trim() === ']') {
-                                        // Closing bracket should be indented same as internal content
-                                        return '  ' + line;
+
+                                    // Check if this is the closing bracket (starts with } or ])
+                                    const trimmed = line.trim();
+                                    if ((trimmed === '}' || trimmed === ']') && i === lines.length - 1) {
+                                        // Last line closing bracket - don't add extra indent
+                                        return line;
                                     }
+
+                                    // All other lines get 2 spaces added
                                     return '  ' + line;
                                 }).join('\n');
+
                                 return indented;
                             } catch {
                                 // Not valid JSON, return as-is
