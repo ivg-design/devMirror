@@ -456,102 +456,73 @@ export class CDPManager {
     }
 
     private async startCEFMode(config: DevMirrorConfig): Promise<void> {
-        // Load puppeteer
-        let puppeteerLoaded = false;
-        try {
-            const projectPath = path.join(process.cwd(), 'node_modules', 'puppeteer-core');
-            this.puppeteer = require(projectPath);
-            puppeteerLoaded = true;
-        } catch (error) {
-            try {
-                this.puppeteer = require('puppeteer-core');
-                puppeteerLoaded = true;
-            } catch (error2) {}
+        // Initialize LogWriter ONCE at the beginning
+        if (!this.logWriter) {
+            this.logWriter = new LogWriter(config.outputDir);
+            await this.logWriter.initialize();
         }
 
-        if (!puppeteerLoaded) {
-            console.error('❌ puppeteer-core not found');
-            process.exit(1);
-        }
-
-        this.logWriter = new LogWriter(config.outputDir);
-        await this.logWriter.initialize();
-
-        const debugUrl = `http://localhost:${config.cefPort}`;
-
-        console.log('🎨 DevMirror Active (CEF Debug Mode)');
-        console.log(`├─ Chrome launching...`);
+        console.log('🎨 DevMirror Active (CEF Debug Mode - Direct Connection)');
         console.log(`├─ CEF Debug Port: ${config.cefPort}`);
         console.log(`├─ Logging to: ${config.outputDir}`);
-        console.log(`└─ Opening: ${debugUrl}`);
+        console.log(`└─ NO BROWSER REQUIRED - Connecting directly to CDP`);
 
-        try {
-            const executablePath = config.chromePath || this.findChrome();
-            const userDataDir = path.join(os.homedir(), '.devmirror', 'chrome-profile-cef');
+        // Connect directly to CEF debugger WITHOUT opening browser
+        // This is how CEF logger does it - direct connection!
+        let connected = false;
+        let retryCount = 0;
+        const maxRetries = 10;
 
-            if (!fs.existsSync(userDataDir)) {
-                fs.mkdirSync(userDataDir, { recursive: true });
-            }
+        while (!connected && retryCount < maxRetries) {
+            retryCount++;
+            console.log(`\n🔌 Connection attempt ${retryCount}/${maxRetries}...`);
+            connected = await this.connectToCEFDebugger(config.cefPort!, config);
 
-            // Launch Chrome pointing to the CEF debug interface
-            this.browser = await this.puppeteer.launch({
-                headless: false,
-                devtools: false,  // Don't auto-open devtools for CEF mode
-                executablePath: executablePath,
-                userDataDir: userDataDir,
-                defaultViewport: null,
-                args: [
-                    '--start-maximized',
-                    '--disable-background-timer-throttling',
-                    '--disable-backgrounding-occluded-windows',
-                    '--disable-renderer-backgrounding'
-                ]
-            });
-
-            // Get the page
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            const pages = await this.browser.pages();
-            this.page = pages[0] || await this.browser.newPage();
-
-            // Navigate to CEF debug interface - DISABLED FOR TESTING
-            // await this.navigateToCEF(debugUrl);
-
-            // Just go to the main debug page and STOP
-            await this.page.goto(debugUrl, {
-                waitUntil: 'domcontentloaded',
-                timeout: 10000
-            });
-            console.log('   ⏸️  Stopped at CEF index page - manual navigation required');
-
-            // Set up auto-reconnect monitoring - DISABLED FOR TESTING
-            // this.setupCEFReconnect(debugUrl);
-
-            // Try to connect to CEF debugger for console capture
-            // Retry a few times as the CEF target might not be immediately available
-            let connected = false;
-            for (let i = 0; i < 5; i++) {
+            if (!connected) {
+                if (retryCount === 1) {
+                    console.log('   ⚠️  CEF target not ready yet');
+                    console.log('   Make sure:');
+                    console.log('   1. Your Adobe application is running');
+                    console.log('   2. The extension is loaded');
+                    console.log('   3. Debug mode is enabled (.debug file exists)');
+                }
+                console.log(`   Waiting 2 seconds before retry...`);
                 await new Promise(resolve => setTimeout(resolve, 2000));
-                connected = await this.connectToCEFDebugger(config.cefPort!, config);
-                if (connected) break;
-                console.log(`   Retry ${i + 1}/5 - Waiting for CEF target...`);
             }
+        }
 
-            console.log('\n✅ Chrome opened to CEF debug interface');
-            if (connected) {
-                console.log('   ✅ Console output is being captured to log files');
-            } else {
-                console.log('   ⚠️  Console capture pending - will retry when CEF target becomes available');
-                // Set up periodic retry
-                setInterval(async () => {
-                    if (!this.client) {
-                        await this.connectToCEFDebugger(config.cefPort!, config);
+        if (connected) {
+            console.log('\n✅ DevMirror connected directly to CEF via CDP');
+            console.log('   ✅ Console capture active - no browser needed!');
+            console.log('   ✅ Capturing ALL console output to log files');
+            console.log('\n📝 To view the console in a browser (optional):');
+            console.log(`   Open Chrome and navigate to http://localhost:${config.cefPort}`);
+            console.log('   Then click on your extension target');
+        } else {
+            console.log('\n❌ Could not connect to CEF after ${maxRetries} attempts');
+            console.log('   DevMirror will keep trying in the background...');
+
+            // Set up periodic retry with backoff
+            let retryInterval = 2000;
+            const maxRetryInterval = 30000;
+            const retryConnect = async () => {
+                if (!this.client) {
+                    const connected = await this.connectToCEFDebugger(config.cefPort!, config);
+                    if (connected) {
+                        console.log('\n✅ Successfully connected to CEF!');
+                        console.log('   Console capture is now active');
+                        retryInterval = 2000; // Reset on success
+                    } else {
+                        // Exponential backoff
+                        retryInterval = Math.min(retryInterval * 1.5, maxRetryInterval);
+                        setTimeout(retryConnect, retryInterval);
                     }
-                }, 5000);
-            }
-
-        } catch (error) {
-            console.error('Failed to start CEF mode:', error);
-            throw error;
+                } else {
+                    // Already connected, reset interval
+                    retryInterval = 2000;
+                }
+            };
+            setTimeout(retryConnect, retryInterval);
         }
     }
 
@@ -892,14 +863,7 @@ export class CDPManager {
                     _eventHandlers: {}
                 };
 
-                // Initialize LogWriter immediately if needed
-                if (!this.logWriter) {
-                    const outputDir = config?.outputDir || './devmirror-logs';
-                    this.logWriter = new LogWriter(outputDir);
-                    this.logWriter.initialize().catch(err => {
-                        console.log('   ⚠️ LogWriter initialization error:', err);
-                    });
-                }
+                // LogWriter should already be initialized - don't create new one!
 
                 // Handle WebSocket messages
                 ws.on('message', (data: string) => {
@@ -921,21 +885,15 @@ export class CDPManager {
                             }
                         }
 
-                        // Handle ALL events - universal capture
-                        if (message.method) {
-                            // First check if it's a console-related event
-                            const isConsoleEvent = message.method.includes('Console') ||
-                                                   message.method.includes('Runtime.console') ||
-                                                   message.method.includes('Log') ||
-                                                   message.method === 'Runtime.exceptionThrown';
-
-                            if (isConsoleEvent) {
-                                // ALWAYS capture console events directly, regardless of handlers
-                                this.captureConsoleEvent(message.method, message.params);
-                            }
-
-                            // Don't call other handlers - we're capturing everything here
+                                // Handle events - ONLY Runtime.consoleAPICalled to prevent duplicates
+                        if (message.method === 'Runtime.consoleAPICalled') {
+                            // Capture console events - this is the ONLY event we need
+                            this.captureConsoleEvent(message.method, message.params);
+                        } else if (message.method === 'Runtime.exceptionThrown') {
+                            // Also capture exceptions
+                            this.captureConsoleEvent(message.method, message.params);
                         }
+                        // IGNORE all other events - they cause duplicates!
                     } catch (e) {
                         console.log('   Error parsing CDP message:', e);
                     }
@@ -950,13 +908,10 @@ export class CDPManager {
 
                 console.log('   ✅ WebSocket connected to CEF');
 
-                // Ensure LogWriter is initialized FIRST
+                // LogWriter should already be initialized at the start of startCEFMode
                 if (!this.logWriter) {
-                    console.log('   ⚠️ LogWriter not initialized! Fixing...');
-                    const outputDir = config?.outputDir || './devmirror-logs';
-                    this.logWriter = new LogWriter(outputDir);
-                    await this.logWriter.initialize();
-                    console.log('   ✅ LogWriter initialized for:', outputDir);
+                    console.log('   ⚠️ LogWriter not initialized! This should not happen.');
+                    return false;
                 }
 
                 // We don't need to register specific handlers anymore
@@ -1092,11 +1047,10 @@ export class CDPManager {
                 // NOW enable the CDP domains
                 console.log('   Enabling CDP domains...');
 
-                // Only enable Runtime - it gives us the best console data with stackTrace
-                // Console.enable only gives partial buffered messages and causes duplicates
-                await this.client.send('Runtime.enable');  // This gives us Runtime.consoleAPICalled with stackTrace
-                await this.client.send('Network.enable');
-                await this.client.send('Page.enable');
+                // ONLY enable Runtime - exactly like CEF logger does
+                // This prevents duplicates from multiple domains
+                await this.client.send('Runtime.enable');  // Only Runtime.consoleAPICalled needed
+                // DON'T enable Console, Log, Network, Page - they cause duplicates!
 
                 console.log('   ✅ CDP domains enabled - handlers ready');
                 console.log('   ✅ Connected to CEF console via CDP - capturing all output');

@@ -2,6 +2,43 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.28] - 2025-09-21
+
+### Fixed
+- **SINGLE LOG FILE PER SESSION**: Fixed issue where DevMirror created multiple log files
+- **NO MORE DUPLICATES**: Only enable Runtime domain like CEF logger - no more 10x duplicate messages
+- **STABLE CONNECTION**: Improved reconnection logic with exponential backoff
+- LogWriter initialized ONCE at startup, not on each reconnection
+
+### Changed
+- Only Runtime.consoleAPICalled and Runtime.exceptionThrown events captured
+- Removed Console, Log, Network, Page domains that caused duplicates
+- Matches CEF logger's approach exactly for consistent results
+
+### Improved
+- One log file per session, not per connection attempt
+- No duplicate messages from multiple CDP domains
+- More stable WebSocket connection with better retry logic
+
+## [0.4.27] - 2025-09-20
+
+### Revolutionary Fix
+- **BROWSERLESS CONSOLE CAPTURE**: DevMirror now connects directly to CEF without opening a browser!
+- Applied CEF logger's approach - direct WebSocket connection to CDP
+- Console capture starts immediately when CEF target is available
+- Browser is now OPTIONAL - only needed if you want to view the console visually
+- Captures 100% of logs from the beginning, just like CEF logger
+
+### Removed
+- Removed browser dependency for console capture
+- No more Puppeteer browser launch for CEF mode
+- No more navigation to debug interface required
+
+### Improved
+- Much faster connection - no browser startup overhead
+- More reliable capture - no browser-related issues
+- Cleaner architecture - follows CEF logger's proven approach
+
 ## [0.4.24] - 2025-09-20
 
 ### Testing
