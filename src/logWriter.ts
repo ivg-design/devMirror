@@ -3,7 +3,7 @@ import * as path from 'path';
 import { createWriteStream, WriteStream } from 'fs';
 
 export interface LogEntry {
-    type: 'console' | 'error' | 'network' | 'browser' | 'lifecycle' | 'suppressed';
+    type: 'console' | 'error' | 'network' | 'browser' | 'lifecycle' | 'suppressed' | 'debug';
     method?: string;
     level?: string;
     message: string;

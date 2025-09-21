@@ -947,6 +947,13 @@ export class CDPManager {
                         if (message.method === 'Runtime.consoleAPICalled') {
                             // Debug log to see what's in the message
                             const contextId = message.params.executionContextId;
+
+                            // Write debug info to log file
+                            this.logWriter.write({
+                                type: 'debug',
+                                message: `[DEBUG] Console event: context=${contextId}, current=${this.currentContextId}, type=${message.params.type}`,
+                                timestamp: Date.now()
+                            });
                             console.log(`   📝 Console event: context=${contextId}, current=${this.currentContextId}, type=${message.params.type}`);
 
                             // ONLY capture if from current context
@@ -961,11 +968,21 @@ export class CDPManager {
                                     this.captureConsoleEvent(message.method, message.params);
                                 } else {
                                     console.log(`   🚫 Ignoring message from context ${contextId} (current: ${this.currentContextId})`);
+                                    this.logWriter.write({
+                                        type: 'debug',
+                                        message: `[DEBUG] IGNORING message from context ${contextId} (current: ${this.currentContextId})`,
+                                        timestamp: Date.now()
+                                    });
                                 }
                                 // Silently ignore messages from other contexts
                             } else {
                                 // No context ID - this shouldn't happen but log it
                                 console.log(`   ⚠️ Console event without executionContextId - CAPTURING ANYWAY`);
+                                this.logWriter.write({
+                                    type: 'debug',
+                                    message: `[DEBUG] NO CONTEXT ID - capturing anyway`,
+                                    timestamp: Date.now()
+                                });
                                 this.captureConsoleEvent(message.method, message.params);
                             }
                         } else if (message.method === 'Runtime.exceptionThrown') {

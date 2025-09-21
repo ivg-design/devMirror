@@ -2,6 +2,13 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.34] - 2025-09-21
+
+### Added
+- Debug messages written directly to log file with [DEBUG] prefix
+- Shows execution context IDs for every console message
+- Shows when messages are ignored due to context mismatch
+
 ## [0.4.33] - 2025-09-21
 
 ### Added
