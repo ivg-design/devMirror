@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.36] - 2025-09-21
+
+### Fixed
+- Better detection of pre-existing contexts
+- Track all initial contexts seen before executionContextsCleared
+- Only start capturing after contexts are cleared and new ones created
+- Ignore messages from any initial context IDs
+
 ## [0.4.35] - 2025-09-21
 
 ### Fixed

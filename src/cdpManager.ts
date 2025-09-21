@@ -23,6 +23,7 @@ export class CDPManager {
     private contextCount: number = 0;
     private sessionStartTime: Date = new Date();
     private waitingForFreshContext: boolean = true;  // Ignore existing contexts on startup
+    private initialContextsSeen: Set<number> = new Set();  // Track initial contexts to ignore
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -902,9 +903,11 @@ export class CDPManager {
                             const contextName = context.name || 'Main';
 
                             if (this.waitingForFreshContext) {
-                                // This is the first context creation after DevMirror connected
-                                // This is our fresh context to start capturing from
-                                this.waitingForFreshContext = false;
+                                // Still waiting for a fresh context - this is likely a pre-existing one
+                                this.initialContextsSeen.add(newContextId);
+                                console.log(`   📝 Initial context seen: ${newContextId} (${contextName}) - ignoring until fresh context`);
+                            } else if (!this.initialContextsSeen.has(newContextId) && this.currentContextId === null) {
+                                // This is a fresh context created after we connected
                                 this.currentContextId = newContextId;
                                 this.sessionStartTime = new Date();
 
@@ -916,13 +919,13 @@ export class CDPManager {
                                             `║ 🚀 FRESH CONTEXT DETECTED - Starting capture\n` +
                                             `║ Context ID: ${newContextId} (${contextName})\n` +
                                             `║ Local Time: ${localTime}\n` +
-                                            `║ Note: Ignoring any pre-existing contexts\n` +
+                                            `║ Ignored initial contexts: ${Array.from(this.initialContextsSeen).join(', ')}\n` +
                                             `${'═'.repeat(80)}\n`,
                                     timestamp: Date.now()
                                 });
 
                                 console.log(`   🚀 Fresh context detected: ${newContextId} - Starting capture`);
-                            } else if (this.currentContextId !== null && this.currentContextId !== newContextId) {
+                            } else if (this.currentContextId !== null && this.currentContextId !== newContextId && !this.initialContextsSeen.has(newContextId)) {
                                 // Subsequent context change (reload/refresh)
                                 this.contextCount++;
                                 const elapsed = ((Date.now() - this.sessionStartTime.getTime()) / 1000).toFixed(1);
@@ -960,16 +963,23 @@ export class CDPManager {
                         // Handle execution contexts cleared (happens on navigation)
                         if (message.method === 'Runtime.executionContextsCleared') {
                             console.log('   🧹 All execution contexts cleared');
+                            if (this.waitingForFreshContext) {
+                                // This is our signal that we're about to get fresh contexts
+                                this.waitingForFreshContext = false;
+                                console.log('   ✅ Ready for fresh contexts after clear');
+                            }
+                            // Reset current context since all are cleared
+                            this.currentContextId = null;
                         }
 
                         // Handle console events WITH context filtering
                         if (message.method === 'Runtime.consoleAPICalled') {
                             const contextId = message.params.executionContextId;
 
-                            // If waiting for fresh context, ignore ALL messages
-                            if (this.waitingForFreshContext) {
+                            // If waiting for fresh context OR message is from initial context, ignore
+                            if (this.waitingForFreshContext || this.initialContextsSeen.has(contextId)) {
                                 console.log(`   ⏭️ Ignoring pre-existing context message: context=${contextId}`);
-                                return; // Don't capture anything until we see a fresh context
+                                return; // Don't capture anything from initial contexts
                             }
 
                             // ONLY capture if from current context
