@@ -24,6 +24,7 @@ export class CDPManager {
     private sessionStartTime: Date = new Date();
     private waitingForFreshContext: boolean = true;  // Ignore existing contexts on startup
     private initialContextsSeen: Set<number> = new Set();  // Track initial contexts to ignore
+    private connectionAttempts: number = 0;  // Track how many times we tried to connect
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -485,6 +486,7 @@ export class CDPManager {
 
         while (!connected && retryCount < maxRetries) {
             retryCount++;
+            this.connectionAttempts = retryCount;  // Track attempts
             console.log(`\n🔌 Connection attempt ${retryCount}/${maxRetries}...`);
             connected = await this.connectToCEFDebugger(config.cefPort!, config);
 
@@ -903,9 +905,31 @@ export class CDPManager {
                             const contextName = context.name || 'Main';
 
                             if (this.waitingForFreshContext) {
-                                // Still waiting for a fresh context - this is likely a pre-existing one
-                                this.initialContextsSeen.add(newContextId);
-                                console.log(`   📝 Initial context seen: ${newContextId} (${contextName}) - ignoring until fresh context`);
+                                // Check if this is a fresh start based on connection attempts
+                                if (this.connectionAttempts > 2) {
+                                    // Had to retry multiple times = CEF just started = fresh context!
+                                    console.log(`   🚀 Fresh start detected (${this.connectionAttempts} connection attempts)`);
+                                    this.waitingForFreshContext = false;
+                                    this.currentContextId = newContextId;
+                                    this.sessionStartTime = new Date();
+
+                                    const now = new Date();
+                                    const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${Math.floor(now.getMilliseconds() / 100)}`;
+                                    this.logWriter.write({
+                                        type: 'lifecycle',
+                                        message: `\n${'═'.repeat(80)}\n` +
+                                                `║ 🚀 FRESH CEF START DETECTED\n` +
+                                                `║ Context ID: ${newContextId} (${contextName})\n` +
+                                                `║ Connection attempts: ${this.connectionAttempts}\n` +
+                                                `║ Local Time: ${localTime}\n` +
+                                                `${'═'.repeat(80)}\n`,
+                                        timestamp: Date.now()
+                                    });
+                                } else {
+                                    // Connected quickly = CEF was already running = ignore initial context
+                                    this.initialContextsSeen.add(newContextId);
+                                    console.log(`   📝 Pre-existing context: ${newContextId} (${contextName}) - ignoring (connected in ${this.connectionAttempts} attempt${this.connectionAttempts === 1 ? '' : 's'})`);
+                                }
                             } else if (!this.initialContextsSeen.has(newContextId) && this.currentContextId === null) {
                                 // This is a fresh context created after we connected
                                 this.currentContextId = newContextId;
@@ -976,10 +1000,16 @@ export class CDPManager {
                         if (message.method === 'Runtime.consoleAPICalled') {
                             const contextId = message.params.executionContextId;
 
-                            // If waiting for fresh context OR message is from initial context, ignore
-                            if (this.waitingForFreshContext || this.initialContextsSeen.has(contextId)) {
-                                console.log(`   ⏭️ Ignoring pre-existing context message: context=${contextId}`);
-                                return; // Don't capture anything from initial contexts
+                            // If still waiting for fresh context, ignore
+                            if (this.waitingForFreshContext) {
+                                console.log(`   ⏭️ Ignoring message (waiting for fresh context): context=${contextId}`);
+                                return;
+                            }
+
+                            // If message is from initial context that we determined was stale, ignore it
+                            if (this.initialContextsSeen.has(contextId)) {
+                                console.log(`   ⏭️ Ignoring stale context message: context=${contextId}`);
+                                return;
                             }
 
                             // ONLY capture if from current context

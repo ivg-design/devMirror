@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.37] - 2025-09-21
+
+### Fixed
+- Smart context detection based on connection attempts
+- If DevMirror connects quickly (1-2 attempts) = CEF was already running = ignore initial context
+- If DevMirror needs multiple retries (3+) = CEF just started = capture initial context
+- Removed tentative buffer complexity
+
 ## [0.4.36] - 2025-09-21
 
 ### Fixed
