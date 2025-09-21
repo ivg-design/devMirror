@@ -2,95 +2,88 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 
-export class WizardViewProvider implements vscode.WebviewViewProvider {
-    public static readonly viewType = 'devmirror.setupWizard';
-    private _view?: vscode.WebviewView;
+export class WizardViewProvider {
+    public static currentPanel: WizardViewProvider | undefined;
+    private readonly _panel: vscode.WebviewPanel;
+    private _disposables: vscode.Disposable[] = [];
     private scriptName: string = '';
     private scriptCommand: string = '';
     private packageJsonPath: string = '';
-    private pendingScript?: { name: string; command: string; path: string };
 
-    constructor(
-        private readonly _extensionUri: vscode.Uri,
-    ) {}
-
-    public resolveWebviewView(
-        webviewView: vscode.WebviewView,
-        context: vscode.WebviewViewResolveContext,
-        _token: vscode.CancellationToken,
+    public static createOrShow(
+        extensionUri: vscode.Uri,
+        scriptName: string,
+        scriptCommand: string,
+        packageJsonPath: string
     ) {
-        this._view = webviewView;
+        const column = vscode.ViewColumn.Beside;
 
-        webviewView.webview.options = {
-            enableScripts: true,
-            localResourceRoots: [this._extensionUri]
-        };
-
-        webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
-
-        // If we have pending script data, send it now
-        if (this.pendingScript) {
-            this._view.show?.(true);
-            this._view.webview.postMessage({
-                type: 'loadScript',
-                scriptName: this.pendingScript.name,
-                scriptCommand: this.pendingScript.command
-            });
-            this.scriptName = this.pendingScript.name;
-            this.scriptCommand = this.pendingScript.command;
-            this.packageJsonPath = this.pendingScript.path;
-            this.pendingScript = undefined;
+        // If we already have a panel, show it
+        if (WizardViewProvider.currentPanel) {
+            WizardViewProvider.currentPanel._panel.reveal(column);
+            WizardViewProvider.currentPanel.loadScript(scriptName, scriptCommand, packageJsonPath);
+            return;
         }
+
+        // Create a new panel
+        const panel = vscode.window.createWebviewPanel(
+            'devmirrorWizard',
+            'DevMirror Setup Wizard',
+            column,
+            {
+                enableScripts: true,
+                localResourceRoots: [extensionUri]
+            }
+        );
+
+        WizardViewProvider.currentPanel = new WizardViewProvider(panel, extensionUri);
+        WizardViewProvider.currentPanel.loadScript(scriptName, scriptCommand, packageJsonPath);
+    }
+
+    private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri) {
+        this._panel = panel;
+
+        // Set the webview's initial html content
+        this._update();
+
+        // Listen for when the panel is disposed
+        this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
 
         // Handle messages from the webview
-        webviewView.webview.onDidReceiveMessage(async data => {
-            switch (data.type) {
-                case 'generate':
-                    await this.generateConfiguration(data.config);
-                    break;
-                case 'cancel':
-                    this.hideWizard();
-                    break;
-                case 'analyzeScript':
-                    const analysis = await this.analyzeScript(data.command);
-                    webviewView.webview.postMessage({
-                        type: 'scriptAnalysis',
-                        analysis
-                    });
-                    break;
-            }
+        this._panel.webview.onDidReceiveMessage(
+            async message => {
+                switch (message.type) {
+                    case 'generate':
+                        await this.generateConfiguration(message.config);
+                        break;
+                    case 'cancel':
+                        this.dispose();
+                        break;
+                    case 'analyzeScript':
+                        const analysis = await this.analyzeScript(message.command);
+                        this._panel.webview.postMessage({
+                            type: 'scriptAnalysis',
+                            analysis
+                        });
+                        break;
+                }
+            },
+            null,
+            this._disposables
+        );
+    }
+
+    private loadScript(scriptName: string, scriptCommand: string, packageJsonPath: string) {
+        this.scriptName = scriptName;
+        this.scriptCommand = scriptCommand;
+        this.packageJsonPath = packageJsonPath;
+
+        // Send script info to webview
+        this._panel.webview.postMessage({
+            type: 'loadScript',
+            scriptName,
+            scriptCommand
         });
-    }
-
-    public showWizard(scriptName: string, scriptCommand: string, packageJsonPath: string) {
-        if (this._view) {
-            // View exists, use it directly
-            this.scriptName = scriptName;
-            this.scriptCommand = scriptCommand;
-            this.packageJsonPath = packageJsonPath;
-
-            // Show the wizard view first
-            this._view.show?.(true);
-
-            // Send script info to webview
-            this._view.webview.postMessage({
-                type: 'loadScript',
-                scriptName,
-                scriptCommand
-            });
-        } else {
-            // Store data for when view is created
-            this.pendingScript = {
-                name: scriptName,
-                command: scriptCommand,
-                path: packageJsonPath
-            };
-        }
-    }
-
-    private hideWizard() {
-        // Return to tree view
-        vscode.commands.executeCommand('devmirrorPackages.focus');
     }
 
     private async analyzeScript(command: string): Promise<any> {
@@ -165,7 +158,7 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
                 `✅ DevMirror configuration generated for "${this.scriptName}:mirror"`
             );
 
-            this.hideWizard();
+            this.dispose();
 
             // Refresh the tree view
             vscode.commands.executeCommand('devmirror.refreshPackages');
@@ -175,7 +168,25 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview) {
+    public dispose() {
+        WizardViewProvider.currentPanel = undefined;
+
+        // Clean up resources
+        this._panel.dispose();
+
+        while (this._disposables.length) {
+            const x = this._disposables.pop();
+            if (x) {
+                x.dispose();
+            }
+        }
+    }
+
+    private _update() {
+        this._panel.webview.html = this._getHtmlForWebview();
+    }
+
+    private _getHtmlForWebview() {
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -187,35 +198,36 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
             background: #1e1e1e;
             color: #cccccc;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 20px;
+            padding: 15px;
             margin: 0;
+            max-width: 500px;
         }
 
         h2 {
             color: #ffffff;
-            font-size: 18px;
-            margin: 0 0 20px 0;
-            padding-bottom: 10px;
+            font-size: 16px;
+            margin: 0 0 15px 0;
+            padding-bottom: 8px;
             border-bottom: 1px solid #3c3c3c;
         }
 
         .script-info {
             background: #252526;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+            padding: 8px;
+            border-radius: 3px;
+            margin-bottom: 15px;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 12px;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            font-size: 13px;
+            margin-bottom: 4px;
+            font-size: 12px;
             color: #ffffff;
         }
 
@@ -224,9 +236,9 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
             background: #3c3c3c;
             border: 1px solid #474747;
             color: #cccccc;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 13px;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 12px;
         }
 
         select:focus, input:focus {
@@ -237,34 +249,34 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         .checkbox-group {
             display: flex;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
 
         input[type="checkbox"] {
-            margin-right: 8px;
-            width: 16px;
-            height: 16px;
+            margin-right: 6px;
+            width: 14px;
+            height: 14px;
         }
 
         .checkbox-group label {
             margin-bottom: 0;
-            font-size: 13px;
+            font-size: 12px;
         }
 
         .buttons {
             display: flex;
-            gap: 10px;
-            margin-top: 30px;
-            padding-top: 20px;
+            gap: 8px;
+            margin-top: 20px;
+            padding-top: 15px;
             border-top: 1px solid #3c3c3c;
         }
 
         button {
             flex: 1;
-            padding: 10px;
+            padding: 6px 12px;
             border: none;
-            border-radius: 4px;
-            font-size: 13px;
+            border-radius: 3px;
+            font-size: 12px;
             cursor: pointer;
             transition: background 0.2s;
         }
@@ -289,24 +301,34 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
 
         .analysis-hint {
             background: #252526;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 12px;
+            padding: 6px;
+            border-radius: 3px;
+            font-size: 11px;
             color: #969696;
             margin-top: 5px;
         }
 
         .advanced-section {
-            margin-top: 20px;
-            padding-top: 20px;
+            margin-top: 15px;
+            padding-top: 12px;
             border-top: 1px solid #3c3c3c;
         }
 
         .section-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
             color: #ffffff;
+        }
+
+        /* Two column layout for compact form */
+        .form-row {
+            display: flex;
+            gap: 10px;
+        }
+
+        .form-row .form-group {
+            flex: 1;
         }
     </style>
 </head>
@@ -323,38 +345,42 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
     </div>
 
     <form id="wizardForm">
-        <div class="form-group">
-            <label for="executionMode">Execution Mode</label>
-            <select id="executionMode">
-                <option value="immediate">Run immediately</option>
-                <option value="wait">Wait for process/port</option>
-                <option value="smart">Smart detection</option>
-            </select>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="executionMode">Execution Mode</label>
+                <select id="executionMode">
+                    <option value="immediate">Run immediately</option>
+                    <option value="wait">Wait for process/port</option>
+                    <option value="smart">Smart detection</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="startTrigger">Start Trigger</label>
+                <select id="startTrigger">
+                    <option value="immediate">Immediately</option>
+                    <option value="port-open">When port opens</option>
+                    <option value="process-start">When process starts</option>
+                    <option value="user-input">After user interaction</option>
+                </select>
+            </div>
         </div>
 
-        <div class="form-group">
-            <label for="startTrigger">Start Trigger</label>
-            <select id="startTrigger">
-                <option value="immediate">Immediately</option>
-                <option value="port-open">When port opens</option>
-                <option value="process-start">When process starts</option>
-                <option value="user-input">After user interaction</option>
-            </select>
-        </div>
+        <div class="form-row">
+            <div class="form-group">
+                <label for="targetMode">Target Mode</label>
+                <select id="targetMode">
+                    <option value="auto">Auto-detect</option>
+                    <option value="cef">CEF/Chrome Extension</option>
+                    <option value="cdp">Standard Browser (CDP)</option>
+                    <option value="node">Node.js Application</option>
+                </select>
+            </div>
 
-        <div class="form-group">
-            <label for="targetMode">Target Mode</label>
-            <select id="targetMode">
-                <option value="auto">Auto-detect</option>
-                <option value="cef">CEF/Chrome Extension</option>
-                <option value="cdp">Standard Browser (CDP)</option>
-                <option value="node">Node.js Application</option>
-            </select>
-        </div>
-
-        <div class="form-group" id="portGroup">
-            <label for="port">Watch Port</label>
-            <input type="number" id="port" value="8555" placeholder="Leave empty to auto-detect">
+            <div class="form-group" id="portGroup">
+                <label for="port">Watch Port</label>
+                <input type="number" id="port" value="8555" placeholder="Auto-detect">
+            </div>
         </div>
 
         <div class="form-group">
@@ -369,14 +395,16 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         <div class="advanced-section">
             <div class="section-title">Advanced Options</div>
 
-            <div class="checkbox-group">
-                <input type="checkbox" id="waitForUser">
-                <label for="waitForUser">Wait for user interaction</label>
-            </div>
+            <div class="form-row">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="waitForUser">
+                    <label for="waitForUser">Wait for user interaction</label>
+                </div>
 
-            <div class="checkbox-group">
-                <input type="checkbox" id="monitorRestart" checked>
-                <label for="monitorRestart">Monitor for restart</label>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="monitorRestart" checked>
+                    <label for="monitorRestart">Monitor for restart</label>
+                </div>
             </div>
 
             <div class="checkbox-group">
@@ -386,7 +414,7 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
 
             <div class="form-group">
                 <label for="timeout">Timeout (seconds)</label>
-                <input type="number" id="timeout" value="60">
+                <input type="number" id="timeout" value="60" style="width: 100px;">
             </div>
         </div>
 
