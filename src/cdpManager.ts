@@ -756,15 +756,22 @@ export class CDPManager {
                         return `${arg.className || 'Object'} {${props}${overflow}}`;
                     }
 
-                    // Handle description (including JSON objects)
+                    // Handle description (including JSON objects and arrays)
                     if (arg.description) {
-                        // Check if it's a JSON object and format it properly
-                        if (arg.description.startsWith('{') && arg.description.endsWith('}')) {
+                        // Check if it's a JSON object or array and format it properly
+                        if ((arg.description.startsWith('{') && arg.description.endsWith('}')) ||
+                            (arg.description.startsWith('[') && arg.description.endsWith(']'))) {
                             try {
                                 // Parse and re-stringify with proper indentation
                                 const obj = JSON.parse(arg.description);
-                                // Use 2-space indentation and ensure closing brace is aligned
-                                return JSON.stringify(obj, null, 2);
+                                // Use 2-space indentation
+                                let formatted = JSON.stringify(obj, null, 2);
+                                // Add 2 spaces to each line to indent the entire block
+                                formatted = formatted.split('\n').map((line, i) => {
+                                    // Don't indent the first line (it will be inline with the message)
+                                    return i === 0 ? line : '  ' + line;
+                                }).join('\n');
+                                return formatted;
                             } catch {
                                 // Not valid JSON, return as-is
                                 return arg.description;
