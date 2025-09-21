@@ -939,17 +939,34 @@ export class CDPManager {
 
                         // Handle console events WITH context filtering
                         if (message.method === 'Runtime.consoleAPICalled') {
-                            // ONLY capture if from current context or if we haven't set a context yet
+                            // ONLY capture if from current context
                             const contextId = message.params.executionContextId;
-                            if (this.currentContextId === null || contextId === this.currentContextId) {
-                                this.captureConsoleEvent(message.method, message.params);
+
+                            // For first context or matching context only
+                            if (contextId !== undefined) {
+                                if (this.currentContextId === null) {
+                                    // First message sets the context
+                                    this.currentContextId = contextId;
+                                    this.captureConsoleEvent(message.method, message.params);
+                                } else if (contextId === this.currentContextId) {
+                                    // Matching context
+                                    this.captureConsoleEvent(message.method, message.params);
+                                }
+                                // Silently ignore messages from other contexts
+                            } else {
+                                // No context ID - this shouldn't happen but log it
+                                console.log(`   ⚠️ Console event without executionContextId`);
                             }
-                            // Silently ignore messages from other contexts
                         } else if (message.method === 'Runtime.exceptionThrown') {
                             // Check context for exceptions too
                             const contextId = message.params.exceptionDetails?.executionContextId;
-                            if (this.currentContextId === null || contextId === this.currentContextId) {
-                                this.captureConsoleEvent(message.method, message.params);
+                            if (contextId !== undefined) {
+                                if (this.currentContextId === null) {
+                                    this.currentContextId = contextId;
+                                    this.captureConsoleEvent(message.method, message.params);
+                                } else if (contextId === this.currentContextId) {
+                                    this.captureConsoleEvent(message.method, message.params);
+                                }
                             }
                         }
 

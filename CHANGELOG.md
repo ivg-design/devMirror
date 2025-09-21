@@ -2,6 +2,13 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.31] - 2025-09-21
+
+### Fixed
+- Stricter context filtering - only capture messages with valid executionContextId
+- Fixed issue where messages without context ID were being captured
+- First message now sets the context rather than capturing everything
+
 ## [0.4.30] - 2025-09-21
 
 ### Revolutionary Context-Aware Logging
