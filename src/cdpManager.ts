@@ -22,6 +22,7 @@ export class CDPManager {
     private currentContextId: number | null = null;
     private contextCount: number = 0;
     private sessionStartTime: Date = new Date();
+    private waitingForFreshContext: boolean = true;  // Ignore existing contexts on startup
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -900,8 +901,29 @@ export class CDPManager {
                             const newContextId = context.id;
                             const contextName = context.name || 'Main';
 
-                            // Log context change if this isn't the first one
-                            if (this.currentContextId !== null && this.currentContextId !== newContextId) {
+                            if (this.waitingForFreshContext) {
+                                // This is the first context creation after DevMirror connected
+                                // This is our fresh context to start capturing from
+                                this.waitingForFreshContext = false;
+                                this.currentContextId = newContextId;
+                                this.sessionStartTime = new Date();
+
+                                const now = new Date();
+                                const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${Math.floor(now.getMilliseconds() / 100)}`;
+                                this.logWriter.write({
+                                    type: 'lifecycle',
+                                    message: `\n${'═'.repeat(80)}\n` +
+                                            `║ 🚀 FRESH CONTEXT DETECTED - Starting capture\n` +
+                                            `║ Context ID: ${newContextId} (${contextName})\n` +
+                                            `║ Local Time: ${localTime}\n` +
+                                            `║ Note: Ignoring any pre-existing contexts\n` +
+                                            `${'═'.repeat(80)}\n`,
+                                    timestamp: Date.now()
+                                });
+
+                                console.log(`   🚀 Fresh context detected: ${newContextId} - Starting capture`);
+                            } else if (this.currentContextId !== null && this.currentContextId !== newContextId) {
+                                // Subsequent context change (reload/refresh)
                                 this.contextCount++;
                                 const elapsed = ((Date.now() - this.sessionStartTime.getTime()) / 1000).toFixed(1);
 
@@ -921,13 +943,10 @@ export class CDPManager {
                                 });
 
                                 console.log(`   🔄 Context reload detected: ${this.currentContextId} → ${newContextId}`);
-                            } else if (this.currentContextId === null) {
-                                // First context
-                                console.log(`   📝 Initial execution context: ${newContextId} (${contextName})`);
-                            }
 
-                            // Update current context
-                            this.currentContextId = newContextId;
+                                // Update current context
+                                this.currentContextId = newContextId;
+                            }
                         }
 
                         // Handle execution context destroyed
@@ -945,56 +964,33 @@ export class CDPManager {
 
                         // Handle console events WITH context filtering
                         if (message.method === 'Runtime.consoleAPICalled') {
-                            // Debug log to see what's in the message
                             const contextId = message.params.executionContextId;
 
-                            // Write debug info to log file
-                            this.logWriter.write({
-                                type: 'debug',
-                                message: `[DEBUG] Console event: context=${contextId}, current=${this.currentContextId}, type=${message.params.type}`,
-                                timestamp: Date.now()
-                            });
-                            console.log(`   📝 Console event: context=${contextId}, current=${this.currentContextId}, type=${message.params.type}`);
+                            // If waiting for fresh context, ignore ALL messages
+                            if (this.waitingForFreshContext) {
+                                console.log(`   ⏭️ Ignoring pre-existing context message: context=${contextId}`);
+                                return; // Don't capture anything until we see a fresh context
+                            }
 
                             // ONLY capture if from current context
-                            // For first context or matching context only
-                            if (contextId !== undefined) {
-                                if (this.currentContextId === null) {
-                                    // First message sets the context
-                                    this.currentContextId = contextId;
-                                    this.captureConsoleEvent(message.method, message.params);
-                                } else if (contextId === this.currentContextId) {
-                                    // Matching context
-                                    this.captureConsoleEvent(message.method, message.params);
-                                } else {
-                                    console.log(`   🚫 Ignoring message from context ${contextId} (current: ${this.currentContextId})`);
-                                    this.logWriter.write({
-                                        type: 'debug',
-                                        message: `[DEBUG] IGNORING message from context ${contextId} (current: ${this.currentContextId})`,
-                                        timestamp: Date.now()
-                                    });
-                                }
-                                // Silently ignore messages from other contexts
+                            if (contextId !== undefined && contextId === this.currentContextId) {
+                                // Matching context
+                                this.captureConsoleEvent(message.method, message.params);
+                            } else if (contextId !== undefined && contextId !== this.currentContextId) {
+                                console.log(`   🚫 Ignoring message from context ${contextId} (current: ${this.currentContextId})`);
                             } else {
                                 // No context ID - this shouldn't happen but log it
-                                console.log(`   ⚠️ Console event without executionContextId - CAPTURING ANYWAY`);
-                                this.logWriter.write({
-                                    type: 'debug',
-                                    message: `[DEBUG] NO CONTEXT ID - capturing anyway`,
-                                    timestamp: Date.now()
-                                });
-                                this.captureConsoleEvent(message.method, message.params);
+                                console.log(`   ⚠️ Console event without executionContextId - ignoring`);
                             }
                         } else if (message.method === 'Runtime.exceptionThrown') {
                             // Check context for exceptions too
+                            if (this.waitingForFreshContext) {
+                                return; // Ignore exceptions from pre-existing contexts
+                            }
+
                             const contextId = message.params.exceptionDetails?.executionContextId;
-                            if (contextId !== undefined) {
-                                if (this.currentContextId === null) {
-                                    this.currentContextId = contextId;
-                                    this.captureConsoleEvent(message.method, message.params);
-                                } else if (contextId === this.currentContextId) {
-                                    this.captureConsoleEvent(message.method, message.params);
-                                }
+                            if (contextId !== undefined && contextId === this.currentContextId) {
+                                this.captureConsoleEvent(message.method, message.params);
                             }
                         }
 

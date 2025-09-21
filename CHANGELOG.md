@@ -2,6 +2,15 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.35] - 2025-09-21
+
+### Fixed
+- MAJOR FIX: Ignore pre-existing contexts on DevMirror startup
+- Only capture logs from contexts created AFTER DevMirror connects
+- Prevents capturing stale logs from previous sessions
+- Shows "FRESH CONTEXT DETECTED" message when starting capture
+- Removed debug messages from log output
+
 ## [0.4.34] - 2025-09-21
 
 ### Added
