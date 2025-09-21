@@ -7,7 +7,7 @@ import { StatusMonitor } from './statusMonitor';
 import { DevMirrorLauncher } from './devmirror-launcher';
 import { PuppeteerChecker } from './puppeteerChecker';
 import { PackageJsonTreeProvider } from './packageJsonTreeProvider';
-import { WizardViewProvider } from './wizardPanel';
+import { WizardViewProvider } from './wizardViewProvider';
 
 export function activate(context: vscode.ExtensionContext) {
     const outputChannel = vscode.window.createOutputChannel('DevMirror');
@@ -294,6 +294,15 @@ export function activate(context: vscode.ExtensionContext) {
             showCollapseAll: true
         });
 
+        // Register the wizard view provider
+        const wizardProvider = new WizardViewProvider(context.extensionUri);
+        context.subscriptions.push(
+            vscode.window.registerWebviewViewProvider(
+                WizardViewProvider.viewType,
+                wizardProvider
+            )
+        );
+
         // Command to add mirror script from tree view (simple mode)
         const addMirrorCommand = vscode.commands.registerCommand('devmirror.addMirrorScript', async (item) => {
             await treeProvider.addMirrorScript(item);
@@ -301,8 +310,10 @@ export function activate(context: vscode.ExtensionContext) {
 
         // Command to open wizard from tree view (advanced mode)
         const openWizardCommand = vscode.commands.registerCommand('devmirror.openSetupWizard', async (item) => {
-            // Create or show the wizard panel
-            WizardViewProvider.createOrShow(context.extensionUri, item.label, item.command, item.resourcePath);
+            // Focus the wizard view
+            await vscode.commands.executeCommand('devmirror.setupWizard.focus');
+            // Send script info to wizard
+            wizardProvider.showWizard(item.label, item.command, item.resourcePath);
         });
 
         // Command to refresh tree view

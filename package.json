@@ -25,6 +25,15 @@
           "icon": "$(mirror)",
           "contextualTitle": "DevMirror Scripts",
           "when": "workbenchState != empty"
+        },
+        {
+          "type": "webview",
+          "id": "devmirror.setupWizard",
+          "name": "Setup Wizard",
+          "icon": "$(gear)",
+          "contextualTitle": "Setup Wizard",
+          "visibility": "collapsed",
+          "when": "workbenchState != empty"
         }
       ]
     },

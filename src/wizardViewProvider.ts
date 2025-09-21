@@ -184,38 +184,38 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
     <title>DevMirror Setup Wizard</title>
     <style>
         body {
-            background: #1e1e1e;
+            background: transparent;
             color: #cccccc;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            padding: 20px;
+            padding: 10px;
             margin: 0;
         }
 
         h2 {
             color: #ffffff;
-            font-size: 18px;
-            margin: 0 0 20px 0;
-            padding-bottom: 10px;
+            font-size: 14px;
+            margin: 0 0 10px 0;
+            padding-bottom: 5px;
             border-bottom: 1px solid #3c3c3c;
         }
 
         .script-info {
             background: #252526;
-            padding: 10px;
-            border-radius: 4px;
-            margin-bottom: 20px;
+            padding: 6px;
+            border-radius: 3px;
+            margin-bottom: 10px;
             font-family: 'Courier New', monospace;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
         label {
             display: block;
-            margin-bottom: 8px;
-            font-size: 13px;
+            margin-bottom: 3px;
+            font-size: 11px;
             color: #ffffff;
         }
 
@@ -224,9 +224,9 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
             background: #3c3c3c;
             border: 1px solid #474747;
             color: #cccccc;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 13px;
+            padding: 4px;
+            border-radius: 3px;
+            font-size: 11px;
         }
 
         select:focus, input:focus {
@@ -237,34 +237,34 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         .checkbox-group {
             display: flex;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
 
         input[type="checkbox"] {
-            margin-right: 8px;
-            width: 16px;
-            height: 16px;
+            margin-right: 5px;
+            width: 13px;
+            height: 13px;
         }
 
         .checkbox-group label {
             margin-bottom: 0;
-            font-size: 13px;
+            font-size: 11px;
         }
 
         .buttons {
             display: flex;
-            gap: 10px;
-            margin-top: 30px;
-            padding-top: 20px;
+            gap: 6px;
+            margin-top: 12px;
+            padding-top: 10px;
             border-top: 1px solid #3c3c3c;
         }
 
         button {
             flex: 1;
-            padding: 10px;
+            padding: 5px 8px;
             border: none;
-            border-radius: 4px;
-            font-size: 13px;
+            border-radius: 3px;
+            font-size: 11px;
             cursor: pointer;
             transition: background 0.2s;
         }
@@ -289,23 +289,23 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
 
         .analysis-hint {
             background: #252526;
-            padding: 8px;
-            border-radius: 4px;
-            font-size: 12px;
+            padding: 5px;
+            border-radius: 3px;
+            font-size: 10px;
             color: #969696;
-            margin-top: 5px;
+            margin-top: 3px;
         }
 
         .advanced-section {
-            margin-top: 20px;
-            padding-top: 20px;
+            margin-top: 10px;
+            padding-top: 10px;
             border-top: 1px solid #3c3c3c;
         }
 
         .section-title {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: bold;
-            margin-bottom: 15px;
+            margin-bottom: 8px;
             color: #ffffff;
         }
     </style>
