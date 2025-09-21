@@ -2,6 +2,35 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.30] - 2025-09-21
+
+### Revolutionary Context-Aware Logging
+- **EXECUTION CONTEXT FILTERING**: Eliminates ALL duplicate messages by tracking execution contexts
+- **RELOAD/REFRESH MARKERS**: Clear visual delimiters when extension reloads or refreshes
+- **NO MORE DUPLICATES**: Only logs from the current active execution context
+- **ENHANCED LIFECYCLE TRACKING**: Shows context IDs, reload count, and session time
+
+### Added
+- Execution context tracking with `currentContextId`
+- Reload detection via `Runtime.executionContextCreated` events
+- Context destruction monitoring
+- Page lifecycle events (load, navigation)
+- Prominent reload markers in log output showing:
+  - Reload count
+  - Previous and new context IDs
+  - Session elapsed time
+  - Precise timestamps
+
+### Fixed
+- Complete elimination of duplicate log entries
+- No more partial/incomplete initial messages
+- Proper filtering of stale execution contexts
+
+### Technical Changes
+- Filters `Runtime.consoleAPICalled` by `executionContextId`
+- Tracks context lifecycle with `executionContextCreated/Destroyed/Cleared`
+- Page domain enabled for lifecycle events only (not console)
+
 ## [0.4.29] - 2025-09-21
 
 ### Fixed

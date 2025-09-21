@@ -17,6 +17,11 @@ export class CDPManager {
     private client: any = null;
     private puppeteer: any;
 
+    // Execution context tracking
+    private currentContextId: number | null = null;
+    private contextCount: number = 0;
+    private sessionStartTime: Date = new Date();
+
     constructor() {
         // Don't initialize LogWriter here - wait for config
         // this.logWriter will be initialized when we have the outputDir
@@ -867,12 +872,10 @@ export class CDPManager {
 
                 // LogWriter should already be initialized - don't create new one!
 
-                // Handle WebSocket messages
+                // Handle WebSocket messages with execution context filtering
                 ws.on('message', (data: string) => {
                     try {
                         const message = JSON.parse(data);
-
-                        // Silently capture CDP messages without terminal logging
 
                         // Handle responses to commands
                         if (message.id !== undefined) {
@@ -887,15 +890,87 @@ export class CDPManager {
                             }
                         }
 
-                                // Handle events - ONLY Runtime.consoleAPICalled to prevent duplicates
-                        if (message.method === 'Runtime.consoleAPICalled') {
-                            // Capture console events - this is the ONLY event we need
-                            this.captureConsoleEvent(message.method, message.params);
-                        } else if (message.method === 'Runtime.exceptionThrown') {
-                            // Also capture exceptions
-                            this.captureConsoleEvent(message.method, message.params);
+                        // Handle execution context lifecycle events
+                        if (message.method === 'Runtime.executionContextCreated') {
+                            const context = message.params.context;
+                            const newContextId = context.id;
+                            const contextName = context.name || 'Main';
+
+                            // Log context change if this isn't the first one
+                            if (this.currentContextId !== null && this.currentContextId !== newContextId) {
+                                this.contextCount++;
+                                const elapsed = ((Date.now() - this.sessionStartTime.getTime()) / 1000).toFixed(1);
+
+                                // Write prominent reload marker to log
+                                this.logWriter.write({
+                                    type: 'lifecycle',
+                                    message: `\n${'═'.repeat(80)}\n` +
+                                            `║ 🔄 RELOAD/REFRESH DETECTED (#${this.contextCount})\n` +
+                                            `║ Previous Context ID: ${this.currentContextId}\n` +
+                                            `║ New Context ID: ${newContextId} (${contextName})\n` +
+                                            `║ Session Time: ${elapsed}s\n` +
+                                            `║ Timestamp: ${new Date().toISOString()}\n` +
+                                            `${'═'.repeat(80)}\n`,
+                                    timestamp: Date.now()
+                                });
+
+                                console.log(`   🔄 Context reload detected: ${this.currentContextId} → ${newContextId}`);
+                            } else if (this.currentContextId === null) {
+                                // First context
+                                console.log(`   📝 Initial execution context: ${newContextId} (${contextName})`);
+                            }
+
+                            // Update current context
+                            this.currentContextId = newContextId;
                         }
-                        // IGNORE all other events - they cause duplicates!
+
+                        // Handle execution context destroyed
+                        if (message.method === 'Runtime.executionContextDestroyed') {
+                            const destroyedId = message.params.executionContextId;
+                            if (destroyedId === this.currentContextId) {
+                                console.log(`   ⚠️ Current context ${destroyedId} destroyed`);
+                            }
+                        }
+
+                        // Handle execution contexts cleared (happens on navigation)
+                        if (message.method === 'Runtime.executionContextsCleared') {
+                            console.log('   🧹 All execution contexts cleared');
+                        }
+
+                        // Handle console events WITH context filtering
+                        if (message.method === 'Runtime.consoleAPICalled') {
+                            // ONLY capture if from current context or if we haven't set a context yet
+                            const contextId = message.params.executionContextId;
+                            if (this.currentContextId === null || contextId === this.currentContextId) {
+                                this.captureConsoleEvent(message.method, message.params);
+                            }
+                            // Silently ignore messages from other contexts
+                        } else if (message.method === 'Runtime.exceptionThrown') {
+                            // Check context for exceptions too
+                            const contextId = message.params.exceptionDetails?.executionContextId;
+                            if (this.currentContextId === null || contextId === this.currentContextId) {
+                                this.captureConsoleEvent(message.method, message.params);
+                            }
+                        }
+
+                        // Track page lifecycle events for additional context
+                        if (message.method === 'Page.loadEventFired') {
+                            this.logWriter.write({
+                                type: 'lifecycle',
+                                message: '📄 Page load event fired',
+                                timestamp: Date.now()
+                            });
+                        }
+
+                        if (message.method === 'Page.frameNavigated' && message.params.frame.parentId === undefined) {
+                            // Main frame navigation
+                            this.logWriter.write({
+                                type: 'lifecycle',
+                                message: `🧭 Main frame navigated to: ${message.params.frame.url}`,
+                                timestamp: Date.now()
+                            });
+                        }
+
                     } catch (e) {
                         console.log('   Error parsing CDP message:', e);
                     }
@@ -1049,10 +1124,10 @@ export class CDPManager {
                 // NOW enable the CDP domains
                 console.log('   Enabling CDP domains...');
 
-                // ONLY enable Runtime - exactly like CEF logger does
-                // This prevents duplicates from multiple domains
-                await this.client.send('Runtime.enable');  // Only Runtime.consoleAPICalled needed
-                // DON'T enable Console, Log, Network, Page - they cause duplicates!
+                // Enable only necessary domains to prevent duplicates
+                await this.client.send('Runtime.enable');  // For console events and execution contexts
+                await this.client.send('Page.enable');      // For page lifecycle events (load, navigation)
+                // DON'T enable Console, Log, Network - they cause duplicate console messages!
 
                 console.log('   ✅ CDP domains enabled - handlers ready');
                 console.log('   ✅ Connected to CEF console via CDP - capturing all output');
