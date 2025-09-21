@@ -2,6 +2,16 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.33] - 2025-09-21
+
+### Added
+- Debug logging to track execution context IDs
+- Connection counter to detect multiple CDP connections
+- Local time format in reload/refresh markers
+
+### Fixed
+- Use local time format in reload markers to match log timestamps
+
 ## [0.4.31] - 2025-09-21
 
 ### Fixed

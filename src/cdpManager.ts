@@ -16,6 +16,7 @@ export class CDPManager {
     private lastReset = Date.now();
     private client: any = null;
     private puppeteer: any;
+    private static connectionCount: number = 0;
 
     // Execution context tracking
     private currentContextId: number | null = null;
@@ -822,6 +823,9 @@ export class CDPManager {
 
             console.log(`   WebSocket URL: ${browserWSEndpoint}`);
 
+            CDPManager.connectionCount++;
+            console.log(`   🔗 Creating CDP connection #${CDPManager.connectionCount}`);
+
             // For CEF, we need a direct WebSocket connection without browser-level abstractions
             try {
                 // Import WebSocket for direct connection
@@ -902,6 +906,8 @@ export class CDPManager {
                                 const elapsed = ((Date.now() - this.sessionStartTime.getTime()) / 1000).toFixed(1);
 
                                 // Write prominent reload marker to log
+                                const now = new Date();
+                                const localTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}.${Math.floor(now.getMilliseconds() / 100)}`;
                                 this.logWriter.write({
                                     type: 'lifecycle',
                                     message: `\n${'═'.repeat(80)}\n` +
@@ -909,7 +915,7 @@ export class CDPManager {
                                             `║ Previous Context ID: ${this.currentContextId}\n` +
                                             `║ New Context ID: ${newContextId} (${contextName})\n` +
                                             `║ Session Time: ${elapsed}s\n` +
-                                            `║ Timestamp: ${new Date().toISOString()}\n` +
+                                            `║ Local Time: ${localTime}\n` +
                                             `${'═'.repeat(80)}\n`,
                                     timestamp: Date.now()
                                 });
@@ -939,9 +945,11 @@ export class CDPManager {
 
                         // Handle console events WITH context filtering
                         if (message.method === 'Runtime.consoleAPICalled') {
-                            // ONLY capture if from current context
+                            // Debug log to see what's in the message
                             const contextId = message.params.executionContextId;
+                            console.log(`   📝 Console event: context=${contextId}, current=${this.currentContextId}, type=${message.params.type}`);
 
+                            // ONLY capture if from current context
                             // For first context or matching context only
                             if (contextId !== undefined) {
                                 if (this.currentContextId === null) {
@@ -951,11 +959,14 @@ export class CDPManager {
                                 } else if (contextId === this.currentContextId) {
                                     // Matching context
                                     this.captureConsoleEvent(message.method, message.params);
+                                } else {
+                                    console.log(`   🚫 Ignoring message from context ${contextId} (current: ${this.currentContextId})`);
                                 }
                                 // Silently ignore messages from other contexts
                             } else {
                                 // No context ID - this shouldn't happen but log it
-                                console.log(`   ⚠️ Console event without executionContextId`);
+                                console.log(`   ⚠️ Console event without executionContextId - CAPTURING ANYWAY`);
+                                this.captureConsoleEvent(message.method, message.params);
                             }
                         } else if (message.method === 'Runtime.exceptionThrown') {
                             // Check context for exceptions too
@@ -994,8 +1005,12 @@ export class CDPManager {
                 });
 
                 // Wait for WebSocket to open
+                console.log('   🔌 Opening WebSocket connection...');
                 await new Promise((resolve, reject) => {
-                    ws.once('open', resolve);
+                    ws.once('open', () => {
+                        console.log('   ✅ WebSocket connected');
+                        resolve(undefined);
+                    });
                     ws.once('error', reject);
                     setTimeout(() => reject(new Error('WebSocket connection timeout')), 5000);
                 });
