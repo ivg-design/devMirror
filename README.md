@@ -2,15 +2,23 @@
 
 **Capture 100% of browser console output using Chrome DevTools Protocol with Puppeteer**
 
-[![Version](https://img.shields.io/badge/version-0.4.6-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.44-blue.svg)](CHANGELOG.md)
 [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE.txt)
 
 DevMirror is a production-ready VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## 🚀 Latest Release: v0.4.6
+## 🚀 Latest Release: v0.4.44
 
-**Auto Port Detection**: DevMirror now automatically detects your running dev server! No need to manually configure ports - it scans common ports (3000, 5173, 8080) and checks your package.json scripts. Perfect for CEP/CEF debugging with dynamic ports. The URL is now optional in config. See [CHANGELOG.md](CHANGELOG.md) for complete version history.
+**Major Improvements**:
+- **Smart Context Detection** - Intelligently determines whether to capture initial or fresh contexts based on connection timing
+- **Single WebSocket Connection** - Fixed duplicate message issues by ensuring only one CDP connection per session
+- **Clean Shutdown** - Proper signal handling (SIGINT/SIGTERM) for instant cleanup when dev server stops
+- **JSON Formatting** - Multi-line JSON objects now properly indent for clean VS Code folding
+- **Compact Timestamps** - Streamlined format: `yymmddThh:mm:ss.ms`
+- **Non-Invasive Integration** - Run alongside existing loggers without conflicts
+
+See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
 ## Features
 
@@ -18,13 +26,17 @@ DevMirror is a production-ready VS Code extension that captures ALL browser cons
 - **Zero Configuration** - Auto-detects your dev server settings
 - **Live Monitoring** - Status bar shows log count and session duration
 - **Auto-Folding Logs** - Opens logs with all entries collapsed for easier navigation
+- **Smart Context Detection** - Captures fresh contexts only, ignores stale pre-existing ones
+- **Single Connection Architecture** - Prevents duplicate messages from multiple WebSocket connections
 - **Message Deduplication** - Smart throttling prevents log flooding
 - **Network Error Tracking** - Captures failed requests and HTTP errors
 - **Security Monitoring** - Logs CSP violations and security warnings
 - **Page Lifecycle Events** - Tracks page loads and navigations
-- **Adobe CEP Support** - Debug After Effects and other Adobe extensions
-- **Timestamped Logs** - Human-readable format with millisecond precision
+- **Adobe CEP/CEF Support** - Debug After Effects and other Adobe extensions
+- **Timestamped Logs** - Compact format with hundredth-second precision
 - **Automatic File Rotation** - New log files at 50MB to prevent huge files
+- **Clean JSON Formatting** - Proper indentation for VS Code folding
+- **Companion Mode** - Run alongside existing loggers without conflicts
 
 ## Installation
 
@@ -83,16 +95,29 @@ npm run dev:mirror
 ### Log Output Format
 
 ```
-[2025-01-20T14:30:22.123Z] [CONSOLE:LOG] Application started
-[2025-01-20T14:30:22.456Z] [NETWORK:ERROR] Failed to load: ERR_CONNECTION_REFUSED
+[250921T07:58:41.77] [LOG] Application started
+[250921T07:58:41.77] [NETWORK:ERROR] Failed to load: ERR_CONNECTION_REFUSED
     URL: http://api.example.com/users
-[2025-01-20T14:30:22.789Z] [ERROR] TypeError: Cannot read property 'name' of undefined
+[250921T07:58:41.77] [ERROR] TypeError: Cannot read property 'name' of undefined
     at UserList.render (UserList.js:45:23)
     at performWork (react-dom.js:2345:12)
-[2025-01-20T14:30:23.123Z] [BROWSER:WARNING] Security: Content Security Policy violation
-[2025-01-20T14:30:25.000Z] [LIFECYCLE] ════════════ Page Reloaded ════════════
-[2025-01-20T14:30:26.789Z] [SUPPRESSED] Message repeated 100+ times: "Polling update..."
+[250921T07:58:41.78] [BROWSER:WARNING] Security: Content Security Policy violation
+[250921T07:58:41.80] [LIFECYCLE] ════════════ Page Reloaded ════════════
+[250921T07:58:41.89] [SUPPRESSED] Message repeated 100+ times: "Polling update..."
+[250921T07:58:41.90] [LOG] Config object: {
+                               "mode": "development",
+                               "features": [
+                                 "auto-save",
+                                 "hot-reload"
+                               ]
+                             }
 ```
+
+**Format Details:**
+- Compact timestamp: `yymmddThh:mm:ss.ms` (hundredth-second precision)
+- No redundant "CONSOLE:" prefix
+- JSON objects properly indented for VS Code folding
+- Stack traces and URLs indented for clarity
 
 ## Configuration
 
@@ -139,16 +164,17 @@ DevMirror will auto-detect your dev server port!
 ```json
 {
     "mode": "cef",
-    "cefPort": 8860,  // Your CEF debug port from .debug file
+    "cefPort": 8555,  // Your CEF debug port from .debug file
     "outputDir": "./devmirror-logs"
 }
 ```
 
 **CEF Mode Features:**
-- Opens Chrome to CEF debug interface (`http://localhost:cefPort`)
-- Captures ALL console output to log files
+- Smart context detection - only captures fresh contexts, not stale ones
+- Single WebSocket connection - prevents duplicate messages
+- Passive port monitoring - waits for CEF to be ready without creating multiple connections
 - Auto-reconnects when Adobe app/extension restarts
-- Monitors CEF availability and refreshes automatically
+- Clean shutdown when dev server terminates
 
 ## What Gets Captured
 
@@ -221,6 +247,27 @@ DevMirror uses `puppeteer-core` to control Chromium browser via DevTools Protoco
 npm install puppeteer-core
 ```
 
+## Integration with Existing Loggers
+
+DevMirror is designed to work **alongside** your existing logging setup:
+
+### Non-Invasive Companion Mode
+```bash
+# Your existing logger continues to work
+yarn dev
+
+# Run DevMirror in parallel
+npx devmirror-cli
+```
+
+### Why Both Work Together:
+- Multiple CDP connections are supported by Chrome/CEF
+- Each tool writes to its own output location
+- No code modifications required
+- Zero dependency conflicts
+
+See [INTEGRATION.md](INTEGRATION.md) for detailed integration patterns.
+
 ## Troubleshooting
 
 ### Chromium browser not found
@@ -256,14 +303,21 @@ Change your dev server port in `devmirror.config.json`:
 - **PID-Based Monitoring** - Direct process tracking ensures accurate status detection
 - **No Status Files** - Clean architecture with no temporary files to manage
 - **Direct Activation** - CLI sends path/PID data via HTTP POST for instant activation
+- **Smart Context Detection** - Uses connection attempt count to determine if CEF was already running
+- **Single WebSocket Architecture** - Maintains exactly one CDP connection to prevent duplicates
+- **Passive Port Monitoring** - Checks CEF availability without creating connections
+- **Signal Handling** - Proper cleanup on SIGINT/SIGTERM for instant shutdown
 
 ## Performance
 
 - **Minimal overhead** - Async log writing
 - **Smart throttling** - Prevents infinite loops from flooding
 - **Automatic deduplication** - Repeated messages consolidated
-- **File rotation** - Prevents huge log files
+- **File rotation** - Prevents huge log files at 50MB
 - **Zero file polling** - HTTP-based activation eliminates constant file I/O
+- **Single connection** - No duplicate WebSocket connections
+- **Efficient formatting** - JSON indentation calculated once per message
+- **Clean shutdown** - Instant termination without hanging
 
 ## Privacy & Security
 
