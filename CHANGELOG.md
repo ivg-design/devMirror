@@ -2,6 +2,12 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.41] - 2025-09-21
+
+### Fixed
+- Actually fixed JSON closing bracket indentation (was returning wrong variable)
+- Closing brackets now properly indented with 2 spaces
+
 ## [0.4.40] - 2025-09-21
 
 ### Fixed

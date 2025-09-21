@@ -765,13 +765,20 @@ export class CDPManager {
                                 // Parse and re-stringify with proper indentation
                                 const obj = JSON.parse(arg.description);
                                 // Use 2-space indentation
-                                let formatted = JSON.stringify(obj, null, 2);
-                                // Add 2 spaces to each line to indent the entire block
-                                formatted = formatted.split('\n').map((line, i) => {
-                                    // Don't indent the first line (it will be inline with the message)
-                                    return i === 0 ? line : '  ' + line;
+                                const formatted = JSON.stringify(obj, null, 2);
+                                // Split into lines and properly indent
+                                const lines = formatted.split('\n');
+                                // Don't indent first line, indent all others including closing bracket
+                                const indented = lines.map((line, i) => {
+                                    if (i === 0) return line;  // First line stays inline
+                                    // Check if this is a closing bracket/brace (only character on line)
+                                    if (line.trim() === '}' || line.trim() === ']') {
+                                        // Closing bracket should be indented same as internal content
+                                        return '  ' + line;
+                                    }
+                                    return '  ' + line;
                                 }).join('\n');
-                                return formatted;
+                                return indented;
                             } catch {
                                 // Not valid JSON, return as-is
                                 return arg.description;
