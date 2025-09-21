@@ -43,6 +43,16 @@ async function main() {
     // Use CDPManager for both modes - it handles CEF mode internally
     const manager = new CDPManager();
 
+    // Handle process termination gracefully
+    const handleShutdown = async (signal: string) => {
+        console.log(`\n📍 Received ${signal}, shutting down gracefully...`);
+        await manager.stop();
+    };
+
+    process.on('SIGINT', () => handleShutdown('SIGINT'));
+    process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+    process.on('SIGHUP', () => handleShutdown('SIGHUP'));
+
     if (config.mode === 'cef') {
         console.log('🎨 Running in Adobe CEF mode');
     } else {

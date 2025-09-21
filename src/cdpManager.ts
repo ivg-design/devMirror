@@ -25,6 +25,7 @@ export class CDPManager {
     private waitingForFreshContext: boolean = true;  // Ignore existing contexts on startup
     private initialContextsSeen: Set<number> = new Set();  // Track initial contexts to ignore
     private connectionAttempts: number = 0;  // Track how many times we tried to connect
+    private activeWebSocket: any = null;  // Track active WebSocket for cleanup
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -450,19 +451,52 @@ export class CDPManager {
     }
 
     async stop(): Promise<void> {
-        console.log('\nStopping DevMirror...');
+        console.log('\n🛑 Shutting down DevMirror...');
 
+        // Close WebSocket immediately to stop receiving messages
+        if (this.activeWebSocket) {
+            console.log('   Closing WebSocket connection...');
+            try {
+                this.activeWebSocket.close();
+            } catch (e) {
+                // Ignore errors on close
+            }
+            this.activeWebSocket = null;
+        }
+
+        // Clear client
         if (this.client) {
-            await this.client.detach();
+            try {
+                if (this.client.detach) {
+                    await this.client.detach();
+                }
+            } catch (e) {
+                // Ignore errors
+            }
+            this.client = null;
         }
 
+        // Close browser if in browser mode
         if (this.browser) {
-            await this.browser.close();
+            console.log('   Closing browser...');
+            try {
+                await this.browser.close();
+            } catch (e) {
+                // Ignore errors on close
+            }
+            this.browser = null;
         }
 
-        await this.logWriter.close();
+        // Close log writer to prevent empty file creation
+        if (this.logWriter) {
+            console.log('   Closing log writer...');
+            await this.logWriter.close();
+        }
 
-        console.log('DevMirror stopped');
+        console.log('   ✅ DevMirror shutdown complete');
+
+        // Exit the process cleanly
+        process.exit(0);
     }
 
     private async startCEFMode(config: DevMirrorConfig): Promise<void> {
@@ -478,21 +512,22 @@ export class CDPManager {
         console.log(`├─ Logging to: ${this.logWriter ? config.outputDir || './devmirror-logs' : 'not initialized'}`);
         console.log(`└─ NO BROWSER REQUIRED - Connecting directly to CDP`);
 
-        // Connect directly to CEF debugger WITHOUT opening browser
-        // This is how CEF logger does it - direct connection!
-        let connected = false;
+        // First, wait for CEF port to be available (without creating connections)
+        let cefReady = false;
         let retryCount = 0;
         const maxRetries = 10;
 
-        while (!connected && retryCount < maxRetries) {
+        console.log(`\n🔍 Monitoring CEF port ${config.cefPort}...`);
+
+        while (!cefReady && retryCount < maxRetries) {
             retryCount++;
             this.connectionAttempts = retryCount;  // Track attempts
-            console.log(`\n🔌 Connection attempt ${retryCount}/${maxRetries}...`);
-            connected = await this.connectToCEFDebugger(config.cefPort!, config);
+            console.log(`   Check ${retryCount}/${maxRetries}: Testing port ${config.cefPort}...`);
+            cefReady = await this.isCEFReady(config.cefPort!);
 
-            if (!connected) {
+            if (!cefReady) {
                 if (retryCount === 1) {
-                    console.log('   ⚠️  CEF target not ready yet');
+                    console.log('   ⚠️  CEF not ready yet');
                     console.log('   Make sure:');
                     console.log('   1. Your Adobe application is running');
                     console.log('   2. The extension is loaded');
@@ -500,8 +535,19 @@ export class CDPManager {
                 }
                 console.log(`   Waiting 2 seconds before retry...`);
                 await new Promise(resolve => setTimeout(resolve, 2000));
+            } else {
+                console.log(`   ✅ CEF is ready after ${retryCount} attempt${retryCount === 1 ? '' : 's'}`);
             }
         }
+
+        if (!cefReady) {
+            console.log('   ❌ CEF not available after maximum retries');
+            return;
+        }
+
+        // Now make ONE connection
+        console.log(`\n🔌 Creating single CDP connection...`);
+        const connected = await this.connectToCEFDebugger(config.cefPort!, config);
 
         if (connected) {
             console.log('\n✅ DevMirror connected directly to CEF via CDP');
@@ -775,6 +821,16 @@ export class CDPManager {
         }
     }
 
+    private async isCEFReady(cefPort: number): Promise<boolean> {
+        try {
+            // Just check if CEF port is responding - don't create connections
+            const targetsResponse = await fetch(`http://localhost:${cefPort}/json`);
+            return targetsResponse.ok;
+        } catch (error) {
+            return false;
+        }
+    }
+
     private async connectToCEFDebugger(cefPort: number, config?: DevMirrorConfig): Promise<boolean> {
         try {
             // Get list of debug targets from CEF
@@ -830,6 +886,13 @@ export class CDPManager {
             CDPManager.connectionCount++;
             console.log(`   🔗 Creating CDP connection #${CDPManager.connectionCount}`);
 
+            // Clean up any existing WebSocket connection
+            if (this.activeWebSocket) {
+                console.log('   🧹 Cleaning up existing WebSocket connection');
+                this.activeWebSocket.close();
+                this.activeWebSocket = null;
+            }
+
             // For CEF, we need a direct WebSocket connection without browser-level abstractions
             try {
                 // Import WebSocket for direct connection
@@ -837,6 +900,7 @@ export class CDPManager {
 
                 // Create direct WebSocket connection to CEF
                 const ws = new WebSocket(browserWSEndpoint);
+                this.activeWebSocket = ws;  // Track for cleanup
 
                 let messageId = 1;
                 const pendingCallbacks = new Map();
@@ -1242,12 +1306,21 @@ export class CDPManager {
 
                 // Monitor WebSocket close
                 ws.on('close', () => {
+                    // Don't reconnect if we're shutting down
+                    if (this.activeWebSocket === null) {
+                        console.log('   WebSocket closed (shutdown)');
+                        return;
+                    }
                     console.log('\n⚠️  CEF WebSocket closed - will auto-reconnect');
                     this.client = null;
                     setupReconnect();
                 });
 
                 ws.on('error', (error: any) => {
+                    // Don't reconnect if we're shutting down
+                    if (this.activeWebSocket === null) {
+                        return;
+                    }
                     console.log('\n⚠️  CEF WebSocket error:', error.message);
                     this.client = null;
                     setupReconnect();

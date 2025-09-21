@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.38] - 2025-09-21
+
+### Fixed
+- CRITICAL FIX: Only create ONE WebSocket connection
+- Passive port monitoring - check CEF availability without creating connections
+- Clean up any existing WebSocket before creating new one
+- Prevents duplicate messages from multiple active connections
+
 ## [0.4.37] - 2025-09-21
 
 ### Fixed
