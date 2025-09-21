@@ -764,22 +764,16 @@ export class CDPManager {
                             try {
                                 // Parse and re-stringify with proper indentation
                                 const obj = JSON.parse(arg.description);
-                                // Use 2-space indentation
+                                // Format JSON with proper indentation for clean folding
                                 const formatted = JSON.stringify(obj, null, 2);
-                                // Split into lines and properly indent
+                                // Split into lines
                                 const lines = formatted.split('\n');
+
                                 // Process each line
                                 const indented = lines.map((line, i) => {
                                     if (i === 0) return line;  // First line stays inline
 
-                                    // Check if this is the closing bracket (starts with } or ])
-                                    const trimmed = line.trim();
-                                    if ((trimmed === '}' || trimmed === ']') && i === lines.length - 1) {
-                                        // Last line closing bracket - don't add extra indent
-                                        return line;
-                                    }
-
-                                    // All other lines get 2 spaces added
+                                    // All other lines (including closing bracket) get 2 spaces
                                     return '  ' + line;
                                 }).join('\n');
 

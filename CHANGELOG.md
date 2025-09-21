@@ -2,6 +2,12 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.43] - 2025-09-21
+
+### Fixed
+- Closing bracket now indented with 2 spaces for clean VS Code folding
+- Prevents extra line in folded view
+
 ## [0.4.42] - 2025-09-21
 
 ### Fixed
