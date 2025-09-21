@@ -8,7 +8,7 @@ import * as http from 'http';
 
 async function main() {
     console.log('╔════════════════════════════════════════╗');
-    console.log('║         🔴 DevMirror CLI v0.0.1        ║');
+    console.log('║         🟢 DevMirror CLI v0.4.0        ║');
     console.log('╚════════════════════════════════════════╝\n');
 
     let configPath = path.join(process.cwd(), 'devmirror.config.json');

@@ -25,6 +25,13 @@
           "icon": "$(mirror)",
           "contextualTitle": "DevMirror Scripts",
           "when": "workbenchState != empty"
+        },
+        {
+          "type": "webview",
+          "id": "devmirror.setupWizard",
+          "name": "Setup Wizard",
+          "visibility": "hidden",
+          "when": "devmirror.wizardActive"
         }
       ]
     },
@@ -58,6 +65,11 @@
         "command": "devmirror.refreshPackages",
         "title": "Refresh",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "devmirror.openSetupWizard",
+        "title": "Setup Wizard",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
@@ -72,7 +84,12 @@
         {
           "command": "devmirror.addMirrorScript",
           "when": "view == devmirrorPackages && viewItem == script",
-          "group": "inline"
+          "group": "inline@1"
+        },
+        {
+          "command": "devmirror.openSetupWizard",
+          "when": "view == devmirrorPackages && viewItem == script",
+          "group": "inline@2"
         }
       ]
     },
