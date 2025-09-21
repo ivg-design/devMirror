@@ -2,6 +2,13 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.29] - 2025-09-21
+
+### Fixed
+- **Empty outputDir Error**: Fixed "ENOENT: no such file or directory" error
+- LogWriter no longer initialized with empty string in constructor
+- Default outputDir to './devmirror-logs' if not specified in config
+
 ## [0.4.28] - 2025-09-21
 
 ### Fixed

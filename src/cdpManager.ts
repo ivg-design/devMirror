@@ -11,14 +11,15 @@ import { promisify } from 'util';
 export class CDPManager {
     private browser: any = null;
     private page: any = null;
-    private logWriter: LogWriter;
+    private logWriter!: LogWriter;  // Will be initialized before use
     private messageCount = new Map<string, number>();
     private lastReset = Date.now();
     private client: any = null;
     private puppeteer: any;
 
     constructor() {
-        this.logWriter = new LogWriter('');
+        // Don't initialize LogWriter here - wait for config
+        // this.logWriter will be initialized when we have the outputDir
     }
 
     async start(config: DevMirrorConfig): Promise<void> {
@@ -458,13 +459,14 @@ export class CDPManager {
     private async startCEFMode(config: DevMirrorConfig): Promise<void> {
         // Initialize LogWriter ONCE at the beginning
         if (!this.logWriter) {
-            this.logWriter = new LogWriter(config.outputDir);
+            const outputDir = config.outputDir || './devmirror-logs';
+            this.logWriter = new LogWriter(outputDir);
             await this.logWriter.initialize();
         }
 
         console.log('🎨 DevMirror Active (CEF Debug Mode - Direct Connection)');
         console.log(`├─ CEF Debug Port: ${config.cefPort}`);
-        console.log(`├─ Logging to: ${config.outputDir}`);
+        console.log(`├─ Logging to: ${this.logWriter ? config.outputDir || './devmirror-logs' : 'not initialized'}`);
         console.log(`└─ NO BROWSER REQUIRED - Connecting directly to CDP`);
 
         // Connect directly to CEF debugger WITHOUT opening browser
