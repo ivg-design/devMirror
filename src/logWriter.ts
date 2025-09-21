@@ -111,7 +111,21 @@ export class LogWriter {
             typeLabel = `BROWSER:${entry.level.toUpperCase()}`;
         }
 
-        let message = `${prefix} [${typeLabel}] ${entry.message}`;
+        // Handle multi-line messages with proper indentation
+        const logPrefix = `${prefix} [${typeLabel}] `;
+        const prefixLength = logPrefix.length;
+
+        // Split the message into lines and indent continuation lines
+        const messageLines = entry.message.split('\n');
+        const indentedMessage = messageLines.map((line, index) => {
+            if (index === 0) {
+                return line;  // First line stays as-is
+            }
+            // Indent continuation lines to align with the start of the message
+            return ' '.repeat(prefixLength) + line;
+        }).join('\n');
+
+        let message = logPrefix + indentedMessage;
 
         if (entry.count && entry.count > 1) {
             message += ` (×${entry.count})`;
