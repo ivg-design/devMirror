@@ -53,15 +53,18 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         this.packageJsonPath = packageJsonPath;
 
         if (this._view) {
+            // Show the wizard view first
+            this._view.show?.(true);
+
             // Send script info to webview
             this._view.webview.postMessage({
                 type: 'loadScript',
                 scriptName,
                 scriptCommand
             });
-
-            // Show the wizard view
-            this._view.show?.(true);
+        } else {
+            // View not yet created, store for when it's ready
+            vscode.window.showErrorMessage('Wizard view not ready. Please try again.');
         }
     }
 

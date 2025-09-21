@@ -3,7 +3,7 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.4.44",
+  "version": "0.4.45",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -29,9 +29,8 @@
         {
           "type": "webview",
           "id": "devmirror.setupWizard",
-          "name": "Setup Wizard",
-          "visibility": "hidden",
-          "when": "devmirror.wizardActive"
+          "name": "DevMirror Setup Wizard",
+          "visibility": "collapsed"
         }
       ]
     },
