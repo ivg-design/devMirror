@@ -2,6 +2,18 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.61] - 2025-09-22
+
+### Fixed - CEF Reconnection
+- **Context tracking after reconnection** - Now correctly accepts ALL contexts after reconnection
+  - Clears stale context list on reconnection during same DevMirror session
+  - Properly handles context changes when extension reloads with new context IDs
+- **Disconnect/reconnect events logging** - Both events now properly logged to file with timestamps
+
+### Changed
+- Reconnection now clears initialContextsSeen to accept all contexts
+- Added formatted lifecycle events (disconnect/reconnect) with timestamps
+
 ## [0.4.60] - 2025-09-22
 
 ### Fixed - CEF Mode

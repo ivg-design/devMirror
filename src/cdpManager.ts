@@ -1416,14 +1416,13 @@ export class CDPManager {
                         console.log(`   🔄 Auto-reconnecting to CEF debugger... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
                         // On reconnection during the same DevMirror session:
-                        // We should accept messages from the current context since this is
-                        // a continuation of the same debugging session. The context isn't stale
-                        // because DevMirror has been running continuously.
-                        // Only ignore contexts when DevMirror itself is restarted while CEF is already running.
-                        console.log('   📌 Reconnected - accepting existing context (same DevMirror session)');
+                        // Accept ALL contexts since this is a continuation of the same session.
+                        // The extension may have reloaded and gotten a new context ID.
+                        console.log('   📌 Reconnecting - will accept all contexts (same DevMirror session)');
                         this.waitingForFreshContext = false;
-                        // Don't clear initialContextsSeen - keep tracking which contexts were pre-existing
-                        // But set currentContextId to null to accept the next context we see
+                        // Clear the stale context list - all contexts are now valid
+                        this.initialContextsSeen.clear();
+                        // Reset current context to accept the next one we see
                         this.currentContextId = null;
 
                         try {
@@ -1432,6 +1431,25 @@ export class CDPManager {
                                 // Reset attempts on successful reconnection
                                 this.reconnectAttempts = 0;
                                 console.log('   ✅ Successfully reconnected to CEF');
+
+                                // Log reconnection event to file
+                                const localTime = new Date().toLocaleTimeString('en-US', {
+                                    hour12: false,
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    second: '2-digit',
+                                    fractionalSecondDigits: 1
+                                });
+                                this.logWriter.write({
+                                    type: 'lifecycle',
+                                    message: `${'═'.repeat(80)}\n` +
+                                            `║ 🔄 CEF RECONNECTED - Resuming capture\n` +
+                                            `║ Local Time: ${localTime}\n` +
+                                            `║ All contexts now accepted\n` +
+                                            `${'═'.repeat(80)}\n`,
+                                    timestamp: Date.now()
+                                });
+
                                 this.isReconnecting = false;
                             } else {
                                 // Schedule next attempt
@@ -1459,9 +1477,19 @@ export class CDPManager {
 
                     // Log disconnect event to file
                     if (this.logWriter) {
+                        const localTime = new Date().toLocaleTimeString('en-US', {
+                            hour12: false,
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit',
+                            fractionalSecondDigits: 1
+                        });
                         this.logWriter.write({
                             type: 'lifecycle',
-                            message: '════════════ CEF DISCONNECTED ════════════',
+                            message: `${'═'.repeat(80)}\n` +
+                                    `║ ⚠️  CEF DISCONNECTED\n` +
+                                    `║ Local Time: ${localTime}\n` +
+                                    `${'═'.repeat(80)}\n`,
                             timestamp: Date.now()
                         });
                     }

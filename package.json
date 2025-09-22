@@ -15,7 +15,7 @@
     "devtools protocol",
     "console capture"
   ],
-  "version": "0.4.60",
+  "version": "0.4.61",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
