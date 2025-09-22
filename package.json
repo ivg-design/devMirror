@@ -3,7 +3,19 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.4.54",
+  "keywords": [
+    "console",
+    "logging",
+    "debugging",
+    "chrome devtools",
+    "cdp",
+    "adobe cef",
+    "cep",
+    "browser console",
+    "devtools protocol",
+    "console capture"
+  ],
+  "version": "0.4.56",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -127,6 +139,11 @@
           "type": "boolean",
           "default": true,
           "description": "Automatically fold log entries in the editor"
+        },
+        "devmirror.autoOpenBrowser": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically open browser to CEF debug interface when enabled (CEF mode only)"
         }
       }
     }
@@ -168,5 +185,16 @@
   "bugs": {
     "url": "https://github.com/ivg-design/devMirror/issues"
   },
-  "homepage": "https://github.com/ivg-design/devMirror#readme"
+  "homepage": "https://github.com/ivg-design/devMirror#readme",
+  "qna": "https://github.com/ivg-design/devMirror/issues",
+  "sponsor": {
+    "url": "https://github.com/sponsors/ivg-design"
+  },
+  "badges": [
+    {
+      "url": "https://img.shields.io/github/stars/ivg-design/devMirror?style=social",
+      "href": "https://github.com/ivg-design/devMirror",
+      "description": "GitHub Stars"
+    }
+  ]
 }

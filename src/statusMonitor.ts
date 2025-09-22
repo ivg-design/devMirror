@@ -34,35 +34,9 @@ export class StatusMonitor {
     activate(args: { path: string; pid: number; url: string; logDir: string }): void {
         console.log(`[DevMirror] StatusMonitor.activate called with:`, args);
 
-        // Check if this activation is for the current workspace
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) {
-            console.log('[DevMirror] No workspace folders found');
-            return;
-        }
-
-        // Check if any workspace folder matches or contains the activated path
-        const isForThisWorkspace = workspaceFolders.some(folder => {
-            const folderPath = folder.uri.fsPath;
-            // Normalize paths for comparison (remove trailing slashes)
-            const normalizedFolder = path.normalize(folderPath).toLowerCase().replace(/[\/\\]+$/, '');
-            const normalizedArgPath = path.normalize(args.path).toLowerCase().replace(/[\/\\]+$/, '');
-
-            // Log the comparison for debugging
-            console.log(`[DevMirror] Comparing paths:
-  Workspace: ${normalizedFolder}
-  Activated: ${normalizedArgPath}
-  Match: ${normalizedArgPath === normalizedFolder || normalizedArgPath.startsWith(normalizedFolder + path.sep) || normalizedFolder.startsWith(normalizedArgPath + path.sep)}`);
-
-            return normalizedArgPath === normalizedFolder ||
-                   normalizedArgPath.startsWith(normalizedFolder + path.sep) ||
-                   normalizedFolder.startsWith(normalizedArgPath + path.sep);
-        });
-
-        if (!isForThisWorkspace) {
-            console.log(`[DevMirror] Ignoring activation for ${args.path} - not in this workspace`);
-            return;
-        }
+        // TEMPORARILY: Always activate to debug why it's not showing
+        // We'll add workspace filtering back once we fix the issue
+        console.log('[DevMirror] FORCE ACTIVATING status bar for debugging');
 
         // If we already have an active session with the same path, just update the PID
         if (this.activeSession && this.activeSession.path === args.path) {

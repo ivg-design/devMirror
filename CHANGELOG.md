@@ -2,6 +2,28 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.56] - 2025-09-22
+
+### Fixed
+- **Log folding finally working** - Now uses only `editor.foldAll` command with proper delays
+- **Status bar forced activation** - Temporarily removed workspace filtering to ensure visibility
+
+### Improved
+- Increased editor load delays to 800ms for reliable folding
+- Added extra 200ms delay after focusing editor before folding
+- Better debug logging for fold operations
+
+### Updated
+- Package.json now includes repository wiki links and keywords
+- README updated with all current features including auto-fold and stack traces
+- Added autoOpenBrowser configuration option to package.json
+
+## [0.4.55] - 2025-09-22
+
+### Fixed
+- Attempted to fix folding with different commands and timing
+- Debug logging improvements for status bar activation
+
 ## [0.4.54] - 2025-09-22
 
 ### Fixed

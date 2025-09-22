@@ -117,13 +117,15 @@ export function activate(context: vscode.ExtensionContext) {
                     if (autoFold) {
                         // Try multiple fold strategies
                         try {
-                            // First try to fold by indentation level 2 (stack traces)
-                            await vscode.commands.executeCommand('editor.foldLevel2');
-                            console.log('[DevMirror] Applied fold level 2');
-                        } catch {
-                            // Fallback to fold all
-                            await vscode.commands.executeCommand('editor.foldAll');
-                            console.log('[DevMirror] Applied fold all');
+                            // Make sure the editor is active
+                            const currentEditor = vscode.window.activeTextEditor;
+                            if (currentEditor && currentEditor.document.uri.fsPath === uri.fsPath) {
+                                // Use foldAll to fold all log entries
+                                await vscode.commands.executeCommand('editor.foldAll');
+                                console.log('[DevMirror] Applied foldAll on refresh');
+                            }
+                        } catch (e) {
+                            console.log('[DevMirror] Failed to fold on refresh:', e);
                         }
                     }
 
@@ -179,22 +181,48 @@ export function activate(context: vscode.ExtensionContext) {
         });
     }
 
-    // Also watch when files are opened
+    // Watch when active editor changes (includes opening and switching)
     vscode.window.onDidChangeActiveTextEditor(async (editor) => {
         if (editor && (editor.document.uri.fsPath.endsWith('.log') ||
                       editor.document.uri.fsPath.includes('devmirror-logs'))) {
-            // Apply folding immediately when opening log files if enabled
+            // Apply folding when switching to or opening log files if enabled
             if (autoFold) {
+                console.log('[DevMirror] Editor changed to log file, will fold:', editor.document.uri.fsPath);
                 setTimeout(async () => {
                     try {
-                        // Try level 2 folding first (for stack traces)
-                        await vscode.commands.executeCommand('editor.foldLevel2');
-                        console.log('[DevMirror] Applied fold level 2 on open to:', editor.document.uri.fsPath);
-                    } catch {
+                        // First ensure the editor has focus
+                        await vscode.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false });
+                        // Additional delay to ensure editor is ready
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        // Use foldAll to fold all log entries
                         await vscode.commands.executeCommand('editor.foldAll');
-                        console.log('[DevMirror] Applied fold all on open to:', editor.document.uri.fsPath);
+                        console.log('[DevMirror] Applied foldAll to:', editor.document.uri.fsPath);
+                    } catch (e) {
+                        console.log('[DevMirror] Failed to fold:', e);
                     }
-                }, 200);  // Increased delay to ensure document is ready
+                }, 800);  // Increased delay for editor to fully load
+            }
+        }
+    });
+
+    // Also watch when visible text editors change (for split views)
+    vscode.window.onDidChangeVisibleTextEditors(async (editors) => {
+        for (const editor of editors) {
+            if (editor.document.uri.fsPath.includes('devmirror-logs') && editor.document.uri.fsPath.endsWith('.log')) {
+                if (autoFold) {
+                    console.log('[DevMirror] Visible editor changed to log file:', editor.document.uri.fsPath);
+                    setTimeout(async () => {
+                        try {
+                            // Make sure this editor is active before folding
+                            if (editor === vscode.window.activeTextEditor) {
+                                await vscode.commands.executeCommand('editor.foldAll');
+                                console.log('[DevMirror] Applied foldAll on visibility change:', editor.document.uri.fsPath);
+                            }
+                        } catch {
+                            // Silent fail
+                        }
+                    }, 800);
+                }
             }
         }
     });
