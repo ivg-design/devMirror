@@ -2,6 +2,22 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.58] - 2025-09-22
+
+### Fixed
+- **Status bar in wrong window** - Implemented file-based IPC for multi-window support
+- **Workspace detection** - Restored and improved workspace path comparison
+
+### Added
+- File-based activation notification (.devmirror-activation.json)
+- All VS Code windows now watch for activation files
+- Dual IPC mechanism (HTTP + file-based) for reliability
+
+### Improved
+- Each window independently detects if activation is for its workspace
+- Better handling of multi-window scenarios
+- More robust activation mechanism
+
 ## [0.4.57] - 2025-09-22
 
 ### Fixed

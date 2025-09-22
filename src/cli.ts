@@ -124,15 +124,27 @@ async function main() {
         fs.mkdirSync(config.outputDir, { recursive: true });
     }
 
-    // Send activation message to VS Code extension via HTTP
+    // Send activation message to VS Code extension via HTTP and file-based IPC
     const activateVSCode = () => {
-        const data = JSON.stringify({
+        const activationData = {
             path: packagePath,
             pid: process.pid,
             url: config.url,
-            logDir: path.resolve(config.outputDir)
-        });
+            logDir: path.resolve(config.outputDir),
+            timestamp: Date.now()
+        };
 
+        // Write activation file for all VS Code windows to detect
+        const activationFile = path.join(config.outputDir, '.devmirror-activation.json');
+        try {
+            fs.writeFileSync(activationFile, JSON.stringify(activationData, null, 2));
+            console.log('📝 Activation file written for VS Code windows');
+        } catch (e: any) {
+            console.log('📝 Could not write activation file:', e.message || e);
+        }
+
+        // Also try HTTP for backward compatibility
+        const data = JSON.stringify(activationData);
         const options = {
             hostname: '127.0.0.1',
             port: 37240,
@@ -147,23 +159,16 @@ async function main() {
 
         const req = http.request(options, (res) => {
             if (res.statusCode === 200) {
-                console.log('✅ VS Code extension activated');
-            } else {
-                console.log('📝 VS Code extension activation failed (status:', res.statusCode, ')');
+                console.log('✅ VS Code extension activated (HTTP)');
             }
         });
 
         req.on('error', (error) => {
-            if ((error as any).code === 'ECONNREFUSED') {
-                console.log('📝 VS Code extension not responding (VS Code might not be running)');
-            } else {
-                console.log('📝 VS Code extension notification failed:', error.message);
-            }
+            // Silent fail for HTTP - we have the file-based IPC as backup
         });
 
         req.on('timeout', () => {
             req.destroy();
-            console.log('📝 VS Code extension notification timed out');
         });
 
         req.write(data);

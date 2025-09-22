@@ -34,9 +34,38 @@ export class StatusMonitor {
     activate(args: { path: string; pid: number; url: string; logDir: string }): void {
         console.log(`[DevMirror] StatusMonitor.activate called with:`, args);
 
-        // TEMPORARILY: Always activate to debug why it's not showing
-        // We'll add workspace filtering back once we fix the issue
-        console.log('[DevMirror] FORCE ACTIVATING status bar for debugging');
+        // Check if this activation is for the current workspace
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders || workspaceFolders.length === 0) {
+            console.log('[DevMirror] No workspace folders found, ignoring activation');
+            return;
+        }
+
+        // Normalize the incoming path
+        const normalizedArgPath = path.resolve(args.path).toLowerCase();
+
+        // Check if any workspace folder matches the activated path
+        const isForThisWorkspace = workspaceFolders.some(folder => {
+            const normalizedWorkspacePath = path.resolve(folder.uri.fsPath).toLowerCase();
+
+            console.log(`[DevMirror] Comparing paths:
+  Workspace: ${normalizedWorkspacePath}
+  Activated: ${normalizedArgPath}
+  Match: ${normalizedArgPath === normalizedWorkspacePath || normalizedArgPath.startsWith(normalizedWorkspacePath + path.sep)}`);
+
+            // Check if paths match exactly or if activated path is inside workspace
+            return normalizedArgPath === normalizedWorkspacePath ||
+                   normalizedArgPath.startsWith(normalizedWorkspacePath + path.sep);
+        });
+
+        if (!isForThisWorkspace) {
+            console.log(`[DevMirror] Ignoring activation - not for this workspace
+  This workspace: ${workspaceFolders.map(f => f.uri.fsPath).join(', ')}
+  Activation from: ${args.path}`);
+            return;
+        }
+
+        console.log('[DevMirror] Activating status bar for this workspace');
 
         // If we already have an active session with the same path, just update the PID
         if (this.activeSession && this.activeSession.path === args.path) {

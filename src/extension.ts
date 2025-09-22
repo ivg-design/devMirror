@@ -15,7 +15,17 @@ export function activate(context: vscode.ExtensionContext) {
     const statusMonitor = new StatusMonitor();
     const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
 
+    // Function to handle activation messages
+    const handleActivation = (args: any) => {
+        console.log('[DevMirror] Handling activation:', args);
+        console.log('[DevMirror] Current workspace folders:', vscode.workspace.workspaceFolders?.map(f => f.uri.fsPath));
+        statusMonitor.activate(args);
+    };
+
     // Start HTTP server for IPC with CLI
+    const PORT = 37240;
+    let serverStarted = false;
+
     const server = http.createServer((req, res) => {
         console.log(`[DevMirror] HTTP request received: ${req.method} ${req.url}`);
         if (req.method === 'POST' && req.url === '/activate') {
@@ -24,9 +34,11 @@ export function activate(context: vscode.ExtensionContext) {
             req.on('end', () => {
                 try {
                     const args = JSON.parse(body);
-                    console.log('[DevMirror] Activation received:', args);
-                    console.log('[DevMirror] Current workspace folders:', vscode.workspace.workspaceFolders?.map(f => f.uri.fsPath));
-                    statusMonitor.activate(args);
+                    handleActivation(args);
+
+                    // Also broadcast to other windows via a different mechanism
+                    // Since we can't directly communicate between windows,
+                    // each window will check if the activation is for its workspace
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ status: 'activated' }));
                 } catch (error) {
@@ -35,25 +47,86 @@ export function activate(context: vscode.ExtensionContext) {
                     res.end(JSON.stringify({ error: 'Invalid request' }));
                 }
             });
+        } else if (req.method === 'POST' && req.url === '/broadcast') {
+            // Handle broadcasts from other windows
+            let body = '';
+            req.on('data', chunk => body += chunk.toString());
+            req.on('end', () => {
+                try {
+                    const args = JSON.parse(body);
+                    handleActivation(args);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ status: 'broadcasted' }));
+                } catch (error) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Invalid broadcast' }));
+                }
+            });
         } else {
             res.writeHead(404);
             res.end();
         }
     });
 
-    // Try to start server on port 37240 (arbitrary but consistent)
-    const PORT = 37240;
+    // Try to start server
     server.listen(PORT, '127.0.0.1', () => {
-        console.log(`DevMirror IPC server listening on port ${PORT}`);
+        console.log(`[DevMirror] IPC server listening on port ${PORT} (primary window)`);
+        serverStarted = true;
     });
 
     server.on('error', (err: any) => {
         if (err.code === 'EADDRINUSE') {
-            console.log(`Port ${PORT} already in use - DevMirror might already be running`);
+            console.log(`[DevMirror] Port ${PORT} already in use - this is a secondary window`);
+            // Don't try to start another server, just rely on workspace filtering
+            serverStarted = false;
         } else {
-            console.error('DevMirror IPC server error:', err);
+            console.error('[DevMirror] IPC server error:', err);
         }
     });
+
+    // Watch for activation files in any devmirror-logs directory
+    // This ensures all windows get notified regardless of which one has the HTTP server
+    const watchActivationFiles = () => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders) return;
+
+        workspaceFolders.forEach(folder => {
+            const activationPattern = new vscode.RelativePattern(
+                folder,
+                '**/devmirror-logs/.devmirror-activation.json'
+            );
+
+            const activationWatcher = vscode.workspace.createFileSystemWatcher(activationPattern);
+
+            // Watch for new or changed activation files
+            const handleActivationFile = async (uri: vscode.Uri) => {
+                try {
+                    const fs = require('fs');
+                    const content = fs.readFileSync(uri.fsPath, 'utf8');
+                    const args = JSON.parse(content);
+                    console.log('[DevMirror] Activation file detected:', args);
+                    handleActivation(args);
+                } catch (e) {
+                    console.log('[DevMirror] Failed to read activation file:', e);
+                }
+            };
+
+            activationWatcher.onDidCreate(handleActivationFile);
+            activationWatcher.onDidChange(handleActivationFile);
+
+            context.subscriptions.push(activationWatcher);
+
+            // Check for existing activation file on startup
+            const fs = require('fs');
+            const activationPath = path.join(folder.uri.fsPath, 'devmirror-logs', '.devmirror-activation.json');
+            if (fs.existsSync(activationPath)) {
+                handleActivationFile(vscode.Uri.file(activationPath));
+            }
+        });
+    };
+
+    // Set up activation file watching
+    watchActivationFiles();
 
     // Configuration for auto-refresh and auto-fold
     const config = vscode.workspace.getConfiguration('devmirror');
