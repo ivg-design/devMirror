@@ -590,40 +590,70 @@ export class CDPManager {
             console.log('   ✅ Capturing ALL console output to log files');
 
             // Auto-open browser if configured
-            console.log(`\n📌 autoOpenBrowser setting: ${config.autoOpenBrowser}`);
             if (config.autoOpenBrowser) {
-                console.log('🌐 Opening browser to CEF debug interface...');
-                const url = `http://localhost:${config.cefPort}`;
+                console.log('\n🌐 Opening browser to CEF DevTools...');
+
                 try {
-                    // Try to use the open package with dynamic import
-                    const openModule = await import('open');
-                    const open = openModule.default;
-                    console.log('   Opening URL:', url);
-                    await open(url);
-                    console.log('   ✅ Browser opened');
-                } catch (error: any) {
-                    // Fallback to child_process
-                    console.log('   Using fallback method to open browser...');
-                    const { exec } = require('child_process');
-                    const platform = process.platform;
+                    // Get the list of debug targets
+                    const targetsUrl = `http://localhost:${config.cefPort}/json`;
+                    const fetch = (await import('node-fetch')).default;
+                    const targetsResponse = await fetch(targetsUrl);
 
-                    let command;
-                    if (platform === 'darwin') {
-                        command = `open "${url}"`;
-                    } else if (platform === 'win32') {
-                        command = `start "${url}"`;
-                    } else {
-                        command = `xdg-open "${url}"`;
-                    }
+                    if (targetsResponse.ok) {
+                        const targets = await targetsResponse.json() as any[];
 
-                    exec(command, (err: any) => {
-                        if (err) {
-                            console.log('   ⚠️ Could not auto-open browser:', err.message);
-                            console.log(`   Manually navigate to: ${url}`);
+                        // Find the first page target (or any target)
+                        const pageTarget = targets.find((t: any) => t.type === 'page') || targets[0];
+
+                        if (pageTarget && pageTarget.devtoolsFrontendUrl) {
+                            // Open DevTools directly
+                            const devtoolsUrl = `http://localhost:${config.cefPort}${pageTarget.devtoolsFrontendUrl}`;
+                            console.log('   Opening DevTools for:', pageTarget.title || pageTarget.url);
+
+                            try {
+                                // Try to use the open package
+                                const openModule = await import('open');
+                                const open = openModule.default;
+                                await open(devtoolsUrl);
+                                console.log('   ✅ DevTools opened directly');
+                            } catch (openError: any) {
+                                // Fallback to child_process
+                                const { exec } = require('child_process');
+                                const platform = process.platform;
+
+                                let command;
+                                if (platform === 'darwin') {
+                                    command = `open "${devtoolsUrl}"`;
+                                } else if (platform === 'win32') {
+                                    command = `start "${devtoolsUrl}"`;
+                                } else {
+                                    command = `xdg-open "${devtoolsUrl}"`;
+                                }
+
+                                exec(command, (err: any) => {
+                                    if (err) {
+                                        console.log('   ⚠️ Could not auto-open DevTools:', err.message);
+                                        console.log(`   Manually navigate to: ${devtoolsUrl}`);
+                                    } else {
+                                        console.log('   ✅ DevTools opened directly');
+                                    }
+                                });
+                            }
                         } else {
-                            console.log('   ✅ Browser opened');
+                            // Fallback to index page if no devtools URL found
+                            console.log('   ⚠️ No DevTools URL found, opening index page');
+                            const indexUrl = `http://localhost:${config.cefPort}`;
+                            await this.openBrowserFallback(indexUrl);
                         }
-                    });
+                    } else {
+                        // Can't fetch targets, open index page
+                        const indexUrl = `http://localhost:${config.cefPort}`;
+                        await this.openBrowserFallback(indexUrl);
+                    }
+                } catch (error: any) {
+                    console.log('   ⚠️ Error fetching debug targets:', error.message);
+                    const indexUrl = `http://localhost:${config.cefPort}`;
+                    await this.openBrowserFallback(indexUrl);
                 }
             } else {
                 console.log('\n📝 To view the console in a browser (optional):');
@@ -655,6 +685,26 @@ export class CDPManager {
                 }
             };
             setTimeout(retryConnect, retryInterval);
+        }
+    }
+
+    private async openBrowserFallback(url: string): Promise<void> {
+        try {
+            const openModule = await import('open');
+            const open = openModule.default;
+            await open(url);
+        } catch {
+            const { exec } = require('child_process');
+            const platform = process.platform;
+            let command;
+            if (platform === 'darwin') {
+                command = `open "${url}"`;
+            } else if (platform === 'win32') {
+                command = `start "${url}"`;
+            } else {
+                command = `xdg-open "${url}"`;
+            }
+            exec(command, () => {});
         }
     }
 

@@ -2,6 +2,17 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.64] - 2025-09-22
+
+### Added
+- **Auto-navigation to CEF DevTools** - Bypasses index page, opens DevTools directly
+  - Fetches debug targets list from CEF
+  - Opens DevTools inspector for the first page target
+  - Falls back to index page if targets unavailable
+
+### Improved
+- Better CEF browser experience - no manual clicking required
+
 ## [0.4.63] - 2025-09-22
 
 ### Fixed
