@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs/promises';
+import { BackupManager } from './backupManager';
 
 interface PackageScript {
     packagePath: string;
@@ -70,14 +71,28 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
 
                     // Only show dev-related scripts that don't already have :mirror
                     if (isDevScript && !hasMirror) {
-                        scripts.push(new PackageJsonItem(
+                        // Check if this script has a backup (was modified)
+                        const hasBackup = BackupManager.hasBackup(element.resourcePath, name);
+                        const contextValue = hasBackup ? 'modifiedScript' : 'script';
+
+                        // Add visual indicator for modified scripts
+                        const description = hasBackup ? `${command} (modified)` : command as string;
+
+                        const item = new PackageJsonItem(
                             name,
                             element.resourcePath,
                             vscode.TreeItemCollapsibleState.None,
-                            'script',
-                            command as string,
+                            contextValue,
+                            description,
                             `${name}:mirror` in packageJson.scripts
-                        ));
+                        );
+
+                        // Update tooltip for modified scripts
+                        if (hasBackup) {
+                            item.tooltip = `${item.tooltip}\n✏️ Modified - right-click to undo`;
+                        }
+
+                        scripts.push(item);
                     }
                 }
                 return scripts;
@@ -91,12 +106,15 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
     }
 
     async addMirrorScript(item: PackageJsonItem): Promise<void> {
-        if (item.contextValue !== 'script') {
+        if (item.contextValue !== 'script' && item.contextValue !== 'modifiedScript') {
             return;
         }
 
         try {
             const packageDir = path.dirname(item.resourcePath);
+
+            // Create backup before modification
+            BackupManager.createBackup(item.resourcePath, item.label);
 
             // Check for and create devmirror.config.json if needed
             await this.ensureDevMirrorConfig(packageDir);

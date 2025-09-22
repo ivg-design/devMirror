@@ -8,6 +8,7 @@ import { DevMirrorLauncher } from './devmirror-launcher';
 import { PuppeteerChecker } from './puppeteerChecker';
 import { PackageJsonTreeProvider } from './packageJsonTreeProvider';
 import { WizardViewProvider } from './wizardViewProvider';
+import { BackupManager } from './backupManager';
 
 export function activate(context: vscode.ExtensionContext) {
     const outputChannel = vscode.window.createOutputChannel('DevMirror');
@@ -321,10 +322,18 @@ export function activate(context: vscode.ExtensionContext) {
             treeProvider.refresh();
         });
 
+        // Command to undo mirror script modifications
+        const undoMirrorCommand = vscode.commands.registerCommand('devmirror.undoMirrorScript', async (item) => {
+            if (await BackupManager.restoreBackup(item.resourcePath, item.label)) {
+                treeProvider.refresh();
+            }
+        });
+
         context.subscriptions.push(treeView);
         context.subscriptions.push(addMirrorCommand);
         context.subscriptions.push(openWizardCommand);
         context.subscriptions.push(refreshTreeCommand);
+        context.subscriptions.push(undoMirrorCommand);
     }
 
     context.subscriptions.push(setupCommand);

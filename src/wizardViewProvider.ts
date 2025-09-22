@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { BackupManager } from './backupManager';
 
 export class WizardViewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'devmirror.setupWizard';
@@ -89,7 +90,12 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
     }
 
     private hideWizard() {
-        // Return to tree view
+        // Collapse the wizard view
+        if (this._view) {
+            // There's no direct API to collapse, but we can hide by clearing content
+            this._view.webview.html = '<html><body style="padding:10px; color:#888;">Select a script and click the gear icon to configure.</body></html>';
+        }
+        // Focus back to tree view
         vscode.commands.executeCommand('devmirrorPackages.focus');
     }
 
@@ -128,6 +134,9 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
 
     private async generateConfiguration(config: any) {
         try {
+            // Create backup before any modifications
+            BackupManager.createBackup(this.packageJsonPath, this.scriptName);
+
             // Generate devmirror.config.json
             const configPath = path.join(path.dirname(this.packageJsonPath), 'devmirror.config.json');
             const devmirrorConfig = {

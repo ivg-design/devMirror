@@ -3,7 +3,7 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.4.45",
+  "version": "0.4.46",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -72,6 +72,11 @@
         "command": "devmirror.openSetupWizard",
         "title": "Setup Wizard",
         "icon": "$(gear)"
+      },
+      {
+        "command": "devmirror.undoMirrorScript",
+        "title": "Undo Mirror Script",
+        "icon": "$(discard)"
       }
     ],
     "menus": {
@@ -92,6 +97,11 @@
           "command": "devmirror.openSetupWizard",
           "when": "view == devmirrorPackages && viewItem == script",
           "group": "inline@2"
+        },
+        {
+          "command": "devmirror.undoMirrorScript",
+          "when": "view == devmirrorPackages && viewItem == modifiedScript",
+          "group": "inline@3"
         }
       ]
     },

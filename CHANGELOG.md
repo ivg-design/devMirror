@@ -2,6 +2,30 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.46] - 2025-09-21
+
+### Added
+- Setup Wizard with webview UI for advanced configuration
+  - Compact form with dropdowns, inputs, and checkboxes
+  - Script analysis and intelligent suggestions
+  - Detects CEF, interactive CLIs, and other patterns
+- Undo functionality for script modifications
+  - Automatic backup before any changes
+  - Right-click undo option on modified scripts
+  - Visual indicators for modified scripts
+- Two-button system in tree view:
+  - Plus (+) for simple quick setup
+  - Gear (⚙️) for advanced wizard configuration
+
+### Improved
+- Wizard closes automatically on Generate or Cancel
+- Ultra-compact UI design for better space utilization
+- Transparent background to blend with VS Code theme
+
+### Fixed
+- Webview initialization and visibility issues
+- Wizard now appears in Explorer panel as intended
+
 ## [0.4.43] - 2025-09-21
 
 ### Fixed
