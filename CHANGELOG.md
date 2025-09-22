@@ -2,6 +2,19 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.49] - 2025-09-22
+
+### Fixed
+- WebviewView implementation aligned with VS Code API constraints
+- Cancel and success states now show clear visual feedback in the wizard
+- Added disposal handler to prevent "Webview is disposed" errors
+- Added instructions for manually closing the wizard panel (VS Code limitation)
+- Fixed timing issue when loading script data into newly created webviews
+
+### Changed
+- Wizard now shows clear instructions that panel must be manually closed via context menu
+- Success and cancel states have distinct visual presentations
+
 ## [0.4.48] - 2025-09-22
 
 ### Fixed

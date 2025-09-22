@@ -27,20 +27,31 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
             localResourceRoots: [this._extensionUri]
         };
 
+        // Set initial HTML
         webviewView.webview.html = this._getHtmlForWebview(webviewView.webview);
+
+        // Handle disposal - clear our reference when view is disposed
+        webviewView.onDidDispose(() => {
+            this._view = undefined;
+        });
 
         // If we have pending script data, send it now
         if (this.pendingScript) {
             this._view.show?.(true);
-            this._view.webview.postMessage({
-                type: 'loadScript',
-                scriptName: this.pendingScript.name,
-                scriptCommand: this.pendingScript.command
-            });
-            this.scriptName = this.pendingScript.name;
-            this.scriptCommand = this.pendingScript.command;
-            this.packageJsonPath = this.pendingScript.path;
-            this.pendingScript = undefined;
+            // Small delay to ensure webview is ready
+            setTimeout(() => {
+                if (this._view) {
+                    this._view.webview.postMessage({
+                        type: 'loadScript',
+                        scriptName: this.pendingScript!.name,
+                        scriptCommand: this.pendingScript!.command
+                    });
+                    this.scriptName = this.pendingScript!.name;
+                    this.scriptCommand = this.pendingScript!.command;
+                    this.packageJsonPath = this.pendingScript!.path;
+                    this.pendingScript = undefined;
+                }
+            }, 100);
         }
 
         // Handle messages from the webview
@@ -92,7 +103,34 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
     private cancelWizard() {
         // Reset the wizard to initial state
         if (this._view) {
-            this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+            // Show a simple message that wizard was cancelled
+            this._view.webview.html = `<!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        padding: 20px;
+                        color: #999;
+                        font-family: system-ui, -apple-system, sans-serif;
+                        font-size: 13px;
+                        text-align: center;
+                    }
+                    .message {
+                        margin-top: 40px;
+                    }
+                    .hint {
+                        margin-top: 20px;
+                        font-size: 11px;
+                        color: #666;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="message">Configuration cancelled</div>
+                <div class="hint">Click ⚙️ on any script to configure</div>
+                <div class="hint">Right-click here and uncheck "Setup Wizard" to close this panel</div>
+            </body>
+            </html>`;
         }
 
         // Clear stored data
@@ -106,15 +144,51 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
 
     private hideWizard() {
         // Notify user that configuration is complete
-        if (this.scriptName) {
-            vscode.window.showInformationMessage(
-                `✅ DevMirror configuration saved: "${this.scriptName}:mirror"`
-            );
-        }
+        const scriptName = this.scriptName; // Store before clearing
+        if (scriptName) {
+            // Show success state in the webview
+            if (this._view) {
+                this._view.webview.html = `<!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        body {
+                            padding: 20px;
+                            color: #4ec9b0;
+                            font-family: system-ui, -apple-system, sans-serif;
+                            font-size: 13px;
+                            text-align: center;
+                        }
+                        .success {
+                            margin-top: 30px;
+                            font-size: 24px;
+                        }
+                        .message {
+                            margin-top: 15px;
+                            color: #ccc;
+                        }
+                        .script-name {
+                            color: #4fc1ff;
+                            font-family: monospace;
+                        }
+                        .hint {
+                            margin-top: 30px;
+                            font-size: 11px;
+                            color: #666;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="success">✅</div>
+                    <div class="message">Configuration saved for <span class="script-name">${scriptName}:mirror</span></div>
+                    <div class="hint">Right-click here and uncheck "Setup Wizard" to close this panel</div>
+                </body>
+                </html>`;
+            }
 
-        // Reset the wizard to initial state
-        if (this._view) {
-            this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+            vscode.window.showInformationMessage(
+                `✅ DevMirror configuration saved: "${scriptName}:mirror"`
+            );
         }
 
         // Clear stored data
@@ -122,7 +196,7 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         this.scriptCommand = '';
         this.packageJsonPath = '';
 
-        // Focus back to the DevMirror Scripts tree
+        // Focus back to the DevMirror Scripts tree and refresh
         vscode.commands.executeCommand('devmirrorPackages.focus');
     }
 
