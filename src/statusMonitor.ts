@@ -39,7 +39,13 @@ export class StatusMonitor {
         // Check if any workspace folder matches or contains the activated path
         const isForThisWorkspace = workspaceFolders.some(folder => {
             const folderPath = folder.uri.fsPath;
-            return args.path === folderPath || args.path.startsWith(folderPath + path.sep);
+            // Normalize paths for comparison
+            const normalizedFolder = path.normalize(folderPath).toLowerCase();
+            const normalizedArgPath = path.normalize(args.path).toLowerCase();
+
+            return normalizedArgPath === normalizedFolder ||
+                   normalizedArgPath.startsWith(normalizedFolder + path.sep) ||
+                   normalizedFolder.startsWith(normalizedArgPath + path.sep);
         });
 
         if (!isForThisWorkspace) {

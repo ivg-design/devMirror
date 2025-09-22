@@ -73,6 +73,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Set up the log change callback
     statusMonitor.onLogChange(() => {
         const logPath = statusMonitor.getCurrentLogPath();
+        console.log('[DevMirror] Log change detected, path:', logPath, 'autoRefresh:', autoRefresh, 'autoFold:', autoFold);
         if (logPath && autoRefresh) {
             refreshAndFold(vscode.Uri.file(logPath));
         }
@@ -112,7 +113,16 @@ export function activate(context: vscode.ExtensionContext) {
 
                     // Apply folding if enabled
                     if (autoFold) {
-                        await vscode.commands.executeCommand('editor.foldAll');
+                        // Try multiple fold strategies
+                        try {
+                            // First try to fold by indentation level 2 (stack traces)
+                            await vscode.commands.executeCommand('editor.foldLevel2');
+                            console.log('[DevMirror] Applied fold level 2');
+                        } catch {
+                            // Fallback to fold all
+                            await vscode.commands.executeCommand('editor.foldAll');
+                            console.log('[DevMirror] Applied fold all');
+                        }
                     }
 
                     // If user was at bottom, scroll to new bottom
@@ -150,9 +160,15 @@ export function activate(context: vscode.ExtensionContext) {
             // Apply folding immediately when opening log files if enabled
             if (autoFold) {
                 setTimeout(async () => {
-                    await vscode.commands.executeCommand('editor.foldAll');
-                    console.log('Applied folding on open to:', editor.document.uri.fsPath);
-                }, 100);
+                    try {
+                        // Try level 2 folding first (for stack traces)
+                        await vscode.commands.executeCommand('editor.foldLevel2');
+                        console.log('[DevMirror] Applied fold level 2 on open to:', editor.document.uri.fsPath);
+                    } catch {
+                        await vscode.commands.executeCommand('editor.foldAll');
+                        console.log('[DevMirror] Applied fold all on open to:', editor.document.uri.fsPath);
+                    }
+                }, 200);  // Increased delay to ensure document is ready
             }
         }
     });

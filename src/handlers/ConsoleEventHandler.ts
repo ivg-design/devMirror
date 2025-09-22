@@ -33,8 +33,18 @@ export class ConsoleEventHandler {
             // Convert all arguments to strings
             const message = this.formatArguments(args);
 
+            // Add full stack trace if available - capture for ALL messages to match browser behavior
+            let fullMessage = source + message;
+            if (params.stackTrace?.callFrames?.length > 1) {
+                // Skip first frame as it's already in source
+                const stackTrace = this.formatStackTrace(params.stackTrace, true);
+                if (stackTrace) {
+                    fullMessage += '\n' + stackTrace;
+                }
+            }
+
             // Only write if we have a message
-            if (message) {
+            if (fullMessage.trim()) {
                 // Map console types to LogWriter types
                 const logType = type === 'log' || type === 'info' || type === 'warn' ? 'console' :
                                type === 'error' ? 'error' :
@@ -42,7 +52,7 @@ export class ConsoleEventHandler {
 
                 this.logWriter.write({
                     type: logType,
-                    message: source + message,
+                    message: fullMessage,
                     timestamp: Date.now()
                 });
             }
@@ -178,5 +188,28 @@ export class ConsoleEventHandler {
             // Fallback to type
             return `[${arg.type}]`;
         }).join(' ');
+    }
+
+    /**
+     * Format a stack trace from CDP format
+     */
+    private formatStackTrace(stackTrace: any, skipFirst: boolean = false): string {
+        if (!stackTrace?.callFrames || stackTrace.callFrames.length === 0) {
+            return '';
+        }
+
+        const frames = skipFirst ? stackTrace.callFrames.slice(1) : stackTrace.callFrames;
+
+        return frames
+            .map((frame: any) => {
+                const functionName = frame.functionName || '<anonymous>';
+                const fileName = frame.url ? frame.url.split('/').pop() : 'unknown';
+                const lineNumber = frame.lineNumber !== undefined ? frame.lineNumber : '?';
+                const columnNumber = frame.columnNumber !== undefined ? frame.columnNumber : '?';
+
+                // Format similar to browser console
+                return `    at ${functionName} (${fileName}:${lineNumber}:${columnNumber})`;
+            })
+            .join('\n');
     }
 }

@@ -221,11 +221,33 @@ export class CDPManager {
             this.consoleHandler.handleExceptionThrown(event.exceptionDetails);
         });
 
+        // Store request initiators for stack trace tracking
+        const requestInitiators = new Map<string, any>();
+
+        this.client.on('Network.requestWillBeSent', (event: any) => {
+            // Store the initiator for this request ID
+            if (event.initiator) {
+                requestInitiators.set(event.requestId, event.initiator);
+            }
+        });
+
         this.client.on('Network.loadingFailed', (event: any) => {
+            // Add initiator if available
+            const initiator = requestInitiators.get(event.requestId);
+            if (initiator) {
+                event.initiator = initiator;
+                requestInitiators.delete(event.requestId);
+            }
             this.networkHandler.handleLoadingFailed(event);
         });
 
         this.client.on('Network.responseReceived', (event: any) => {
+            // Add initiator if available
+            const initiator = requestInitiators.get(event.requestId);
+            if (initiator) {
+                event.initiator = initiator;
+                // Keep for potential loadingFailed event
+            }
             this.networkHandler.handleResponseReceived(event);
         });
 

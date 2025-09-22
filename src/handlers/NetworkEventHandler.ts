@@ -19,6 +19,12 @@ export class NetworkEventHandler {
             message += ` (Blocked: ${blockedReason})`;
         }
 
+        // Add initiator stack trace if available
+        const stackTrace = this.formatInitiatorStackTrace(event.initiator);
+        if (stackTrace) {
+            message += '\n' + stackTrace;
+        }
+
         this.logWriter.write({
             type: 'network',
             message: message,
@@ -32,9 +38,17 @@ export class NetworkEventHandler {
      */
     handleResponseReceived(event: any): void {
         if (event.response.status >= 400) {
+            let message = `HTTP ${event.response.status}: ${event.response.statusText}`;
+
+            // Add initiator stack trace if available
+            const stackTrace = this.formatInitiatorStackTrace(event.initiator);
+            if (stackTrace) {
+                message += '\n' + stackTrace;
+            }
+
             this.logWriter.write({
                 type: 'network',
-                message: `HTTP ${event.response.status}: ${event.response.statusText}`,
+                message: message,
                 url: event.response.url,
                 timestamp: Date.now()
             });
@@ -47,10 +61,17 @@ export class NetworkEventHandler {
     handleRequestFailed(event: any): void {
         const errorText = event.errorText || 'Unknown error';
         const url = event.request?.url || 'Unknown URL';
+        let message = `Request failed: ${errorText}`;
+
+        // Add initiator stack trace if available
+        const stackTrace = this.formatInitiatorStackTrace(event.initiator);
+        if (stackTrace) {
+            message += '\n' + stackTrace;
+        }
 
         this.logWriter.write({
             type: 'network',
-            message: `Request failed: ${errorText}`,
+            message: message,
             url: url,
             timestamp: Date.now()
         });
@@ -83,5 +104,34 @@ export class NetworkEventHandler {
                 });
             }
         }
+    }
+
+    /**
+     * Format the initiator stack trace from CDP format
+     */
+    private formatInitiatorStackTrace(initiator: any): string | null {
+        if (!initiator) return null;
+
+        // Check if initiator has a stack trace
+        if (initiator.stack?.callFrames?.length > 0) {
+            const frames = initiator.stack.callFrames;
+            return frames.map((frame: any) => {
+                const functionName = frame.functionName || '<anonymous>';
+                const fileName = frame.url ? frame.url.split('/').pop() : 'unknown';
+                const lineNumber = frame.lineNumber !== undefined ? frame.lineNumber + 1 : '?';  // CDP uses 0-based line numbers
+                const columnNumber = frame.columnNumber !== undefined ? frame.columnNumber + 1 : '?';
+
+                // Format to match browser console style
+                return `    at ${functionName} (${fileName}:${lineNumber}:${columnNumber})`;
+            }).join('\n');
+        }
+
+        // If no stack trace but has line/column info
+        if (initiator.lineNumber !== undefined) {
+            const fileName = initiator.url ? initiator.url.split('/').pop() : 'unknown';
+            return `    at <anonymous> (${fileName}:${initiator.lineNumber + 1}:${(initiator.columnNumber || 0) + 1})`;
+        }
+
+        return null;
     }
 }

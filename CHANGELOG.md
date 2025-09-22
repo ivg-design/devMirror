@@ -2,6 +2,27 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.53] - 2025-09-22
+
+### Fixed
+- **CRITICAL: Console capture completely broken in CDP mode** - Runtime.consoleAPICalled handler was commented out
+- **Stack traces now captured for ALL console messages** - Previously only showing first frame location
+- **Network errors now show JavaScript initiator stack traces** - Added Network.requestWillBeSent tracking
+- **Log folding fixed** - Now uses editor.foldLevel2 for better results
+- **Status bar workspace detection improved** - Better path normalization for multi-window scenarios
+- **Config generation fixed** - Now properly includes 'mode' field in default config
+
+### Added
+- Modularized event handlers into separate classes (ConsoleEventHandler, NetworkEventHandler)
+- Full stack trace formatting for console messages with proper indentation
+- Network request initiator tracking to capture JavaScript call sites
+- Improved debugging output for fold operations
+
+### Improved
+- Console messages now show complete call stacks like browser DevTools
+- Network errors display initiator information matching browser console
+- Better code organization with handler separation
+
 ## [0.4.52] - 2025-09-22
 
 ### Added
