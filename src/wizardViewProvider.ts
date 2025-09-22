@@ -50,7 +50,7 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
                     await this.generateConfiguration(data.config);
                     break;
                 case 'cancel':
-                    this.hideWizard();
+                    this.cancelWizard();
                     break;
                 case 'analyzeScript':
                     const analysis = await this.analyzeScript(data.command);
@@ -89,39 +89,41 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    private hideWizard() {
-        // Clear the wizard content and show a placeholder message
+    private cancelWizard() {
+        // Reset the wizard to initial state
         if (this._view) {
-            // Show minimal placeholder content
-            this._view.webview.html = `<!DOCTYPE html>
-            <html>
-            <head>
-                <style>
-                    body {
-                        padding: 10px;
-                        color: #666;
-                        font-family: system-ui, -apple-system, sans-serif;
-                        font-size: 12px;
-                    }
-                </style>
-            </head>
-            <body>
-                <div style="text-align: center; padding-top: 20px;">
-                    Click ⚙️ on a script to configure
-                </div>
-            </body>
-            </html>`;
+            this._view.webview.html = this._getHtmlForWebview(this._view.webview);
         }
+
+        // Clear stored data
+        this.scriptName = '';
+        this.scriptCommand = '';
+        this.packageJsonPath = '';
 
         // Focus back to the DevMirror Scripts tree
         vscode.commands.executeCommand('devmirrorPackages.focus');
+    }
 
+    private hideWizard() {
         // Notify user that configuration is complete
         if (this.scriptName) {
             vscode.window.showInformationMessage(
                 `✅ DevMirror configuration saved: "${this.scriptName}:mirror"`
             );
         }
+
+        // Reset the wizard to initial state
+        if (this._view) {
+            this._view.webview.html = this._getHtmlForWebview(this._view.webview);
+        }
+
+        // Clear stored data
+        this.scriptName = '';
+        this.scriptCommand = '';
+        this.packageJsonPath = '';
+
+        // Focus back to the DevMirror Scripts tree
+        vscode.commands.executeCommand('devmirrorPackages.focus');
     }
 
     private async analyzeScript(command: string): Promise<any> {
@@ -183,7 +185,16 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
 
             // Generate appropriate script based on config
             let mirrorScript = '';
-            if (config.executionMode === 'wait') {
+
+            // Check if this is an interactive CLI (dev:debug with logger-wrapper)
+            const isInteractiveCLI = this.scriptCommand.includes('logger-wrapper') ||
+                                    config.waitForUser ||
+                                    config.startTrigger === 'user-input';
+
+            if (isInteractiveCLI) {
+                // For interactive CLIs, run DevMirror in background
+                mirrorScript = `node scripts/devmirror-background.js & npm run ${this.scriptName}`;
+            } else if (config.executionMode === 'wait') {
                 mirrorScript = `npm run ${this.scriptName} & npx devmirror-cli --wait`;
             } else if (config.integrationMode === 'companion') {
                 mirrorScript = `npm run ${this.scriptName} & npx devmirror-cli --companion`;
@@ -344,8 +355,8 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
     <h2>🔧 DevMirror Setup Wizard</h2>
 
     <div class="script-info" id="scriptInfo">
-        <strong>Script:</strong> <span id="scriptName">loading...</span><br>
-        <strong>Command:</strong> <span id="scriptCommand">loading...</span>
+        <strong>Script:</strong> <span id="scriptName">Select a script</span><br>
+        <strong>Command:</strong> <span id="scriptCommand">Click ⚙️ on a script above</span>
     </div>
 
     <div id="analysisHint" class="analysis-hint" style="display: none;">
@@ -430,6 +441,16 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         const vscode = acquireVsCodeApi();
         let currentScript = {};
 
+        // Initially disable the form
+        function setFormEnabled(enabled) {
+            const form = document.getElementById('wizardForm');
+            const inputs = form.querySelectorAll('input, select, button');
+            inputs.forEach(input => input.disabled = !enabled);
+        }
+
+        // Start with form disabled
+        setFormEnabled(false);
+
         // Listen for messages from extension
         window.addEventListener('message', event => {
             const message = event.data;
@@ -439,6 +460,7 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
                     document.getElementById('scriptName').textContent = message.scriptName;
                     document.getElementById('scriptCommand').textContent = message.scriptCommand;
                     analyzeScript(message.scriptCommand);
+                    setFormEnabled(true); // Enable form when script is loaded
                     break;
                 case 'scriptAnalysis':
                     applyAnalysis(message.analysis);

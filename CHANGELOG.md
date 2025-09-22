@@ -2,6 +2,13 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.48] - 2025-09-22
+
+### Fixed
+- Setup wizard now properly detects and configures interactive CLI applications
+- Generates background runner script for interactive CLIs to prevent interference
+- Improved script generation logic for different workflow types
+
 ## [0.4.47] - 2025-09-22
 
 ### Fixed
