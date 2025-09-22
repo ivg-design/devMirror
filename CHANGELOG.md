@@ -2,6 +2,24 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.52] - 2025-09-22
+
+### Added
+- Companion script now exposed as `devmirror-companion` CLI command
+- Background script generation for interactive CLI support
+- `--wait` flag to wait for debug port before starting
+- `--companion` flag to run in companion mode
+- `devmirror-cli` alias for main CLI tool
+
+### Fixed
+- Interactive CLI mode now properly creates background script
+- Wizard generates working scripts for all modes
+- Wait and companion modes properly implemented
+
+### Changed
+- Wizard uses companion mode for wait/companion integration modes
+- Background script automatically created when needed
+
 ## [0.4.51] - 2025-09-22
 
 ### Fixed

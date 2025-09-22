@@ -3,7 +3,7 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.4.51",
+  "version": "0.4.52",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -157,7 +157,9 @@
     "typescript": "^5.9.2"
   },
   "bin": {
-    "devmirror-cdp": "./out/cli.js"
+    "devmirror-cdp": "./out/cli.js",
+    "devmirror-cli": "./out/cli.js",
+    "devmirror-companion": "./out/devmirror-companion.js"
   },
   "repository": {
     "type": "git",

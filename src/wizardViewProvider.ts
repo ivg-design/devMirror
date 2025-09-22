@@ -215,12 +215,12 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
                                     config.startTrigger === 'user-input';
 
             if (isInteractiveCLI) {
-                // For interactive CLIs, run DevMirror in background
+                // For interactive CLIs, create and use background script
+                await this.createBackgroundScript(path.dirname(this.packageJsonPath));
                 mirrorScript = `node scripts/devmirror-background.js & npm run ${this.scriptName}`;
-            } else if (config.executionMode === 'wait') {
-                mirrorScript = `npm run ${this.scriptName} & npx devmirror-cli --wait`;
-            } else if (config.integrationMode === 'companion') {
-                mirrorScript = `npm run ${this.scriptName} & npx devmirror-cli --companion`;
+            } else if (config.executionMode === 'wait' || config.integrationMode === 'companion') {
+                // Use companion mode for non-invasive operation
+                mirrorScript = `npx devmirror-companion & npm run ${this.scriptName}`;
             } else {
                 mirrorScript = `concurrently "npx devmirror-cli" "npm run ${this.scriptName}"`;
             }
@@ -237,6 +237,92 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
         } catch (error) {
             vscode.window.showErrorMessage(`Failed to generate configuration: ${error}`);
         }
+    }
+
+    private async createBackgroundScript(projectPath: string) {
+        const scriptsDir = path.join(projectPath, 'scripts');
+        const scriptPath = path.join(scriptsDir, 'devmirror-background.js');
+
+        // Create scripts directory if it doesn't exist
+        if (!fs.existsSync(scriptsDir)) {
+            fs.mkdirSync(scriptsDir, { recursive: true });
+        }
+
+        // Create the background script
+        const scriptContent = `#!/usr/bin/env node
+
+/**
+ * DevMirror Background Runner
+ * Waits for CEF/Chrome debug port to be available before starting capture
+ * This prevents interference with interactive CLI tools
+ */
+
+import { spawn } from 'child_process';
+import net from 'net';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Load config
+const configPath = path.join(process.cwd(), 'devmirror.config.json');
+let config = {
+    mode: 'cef',
+    cefPort: 8555,
+    outputDir: './devmirror-logs'
+};
+
+if (fs.existsSync(configPath)) {
+    config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+}
+
+async function checkPort(port) {
+    return new Promise(resolve => {
+        const socket = net.createConnection(port, 'localhost');
+        socket.on('connect', () => {
+            socket.destroy();
+            resolve(true);
+        });
+        socket.on('error', () => resolve(false));
+        socket.setTimeout(100, () => {
+            socket.destroy();
+            resolve(false);
+        });
+    });
+}
+
+async function waitForPort(port) {
+    console.log(\`⏳ DevMirror waiting in background for port \${port}...\`);
+    while (true) {
+        if (await checkPort(port)) {
+            console.log('✅ Port detected! Starting DevMirror capture...');
+            return true;
+        }
+        await new Promise(r => setTimeout(r, 1000));
+    }
+}
+
+async function startDevMirror() {
+    const port = config.cefPort || 8555;
+    await waitForPort(port);
+
+    const devmirror = spawn('npx', ['devmirror-cli'], {
+        stdio: 'inherit',
+        env: { ...process.env }
+    });
+
+    devmirror.on('error', err => {
+        console.error('Failed to start DevMirror:', err);
+    });
+}
+
+startDevMirror().catch(console.error);
+`;
+
+        fs.writeFileSync(scriptPath, scriptContent, { mode: 0o755 });
+        console.log(`Created background script at ${scriptPath}`);
     }
 
     private _getHtmlForWebview(webview: vscode.Webview) {
@@ -399,7 +485,6 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
                 <option value="auto">Auto-detect</option>
                 <option value="cef">CEF/Chrome Extension</option>
                 <option value="cdp">Standard Browser (CDP)</option>
-                <option value="node">Node.js Application</option>
             </select>
         </div>
 

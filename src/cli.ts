@@ -5,11 +5,60 @@ import { ConfigHandler, DevMirrorConfig } from './configHandler';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as http from 'http';
+import * as net from 'net';
+
+async function waitForPort(port: number, maxAttempts = 60): Promise<boolean> {
+    for (let i = 0; i < maxAttempts; i++) {
+        const isOpen = await checkPort(port);
+        if (isOpen) return true;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    return false;
+}
+
+async function checkPort(port: number): Promise<boolean> {
+    return new Promise(resolve => {
+        const socket = net.createConnection(port, 'localhost');
+        socket.on('connect', () => {
+            socket.destroy();
+            resolve(true);
+        });
+        socket.on('error', () => resolve(false));
+        socket.setTimeout(100, () => {
+            socket.destroy();
+            resolve(false);
+        });
+    });
+}
 
 async function main() {
+    // Read version from package.json
+    const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf-8'));
+    const version = packageJson.version;
+    const versionText = `🟢 DevMirror CLI v${version}`;
+    const padding = Math.floor((40 - versionText.length) / 2);
+    const paddedText = ' '.repeat(padding) + versionText + ' '.repeat(40 - padding - versionText.length);
+
     console.log('╔════════════════════════════════════════╗');
-    console.log('║         🟢 DevMirror CLI v0.4.0        ║');
+    console.log(`║${paddedText}║`);
     console.log('╚════════════════════════════════════════╝\n');
+
+    // Parse command line arguments
+    const args = process.argv.slice(2);
+    const waitMode = args.includes('--wait');
+    const companionMode = args.includes('--companion');
+
+    // If companion mode, delegate to companion script
+    if (companionMode) {
+        console.log('🤝 Running in companion mode...');
+        const { spawn } = require('child_process');
+        const companion = spawn('node', [path.join(__dirname, 'devmirror-companion.js')], {
+            stdio: 'inherit',
+            env: process.env
+        });
+        companion.on('exit', (code: number | null) => process.exit(code || 0));
+        return;
+    }
 
     let configPath = path.join(process.cwd(), 'devmirror.config.json');
 
@@ -38,6 +87,14 @@ async function main() {
         config.mode = 'cef';
     } else if (!config.mode) {
         config.mode = 'cdp';
+    }
+
+    // Handle wait mode
+    if (waitMode) {
+        console.log('⏳ Wait mode: Waiting for debug port to be available...');
+        const port = config.cefPort || 9222;
+        await waitForPort(port);
+        console.log('✅ Port detected! Starting capture...');
     }
 
     // Use CDPManager for both modes - it handles CEF mode internally
