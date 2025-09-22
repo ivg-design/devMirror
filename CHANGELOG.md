@@ -2,6 +2,16 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.57] - 2025-09-22
+
+### Fixed
+- **Recursive folding loop** - Removed `showTextDocument()` call that was causing infinite recursion
+- **Event storm on termination** - Removed redundant `onDidChangeVisibleTextEditors` handler
+
+### Improved
+- Simplified folding logic - editor is already active when event fires
+- Cleaner event handling with single source of truth
+
 ## [0.4.56] - 2025-09-22
 
 ### Fixed

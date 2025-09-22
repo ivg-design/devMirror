@@ -188,44 +188,25 @@ export function activate(context: vscode.ExtensionContext) {
             // Apply folding when switching to or opening log files if enabled
             if (autoFold) {
                 console.log('[DevMirror] Editor changed to log file, will fold:', editor.document.uri.fsPath);
+
+                // The editor is ALREADY active - no need to call showTextDocument!
+                // That was causing the recursion.
                 setTimeout(async () => {
                     try {
-                        // First ensure the editor has focus
-                        await vscode.window.showTextDocument(editor.document, { viewColumn: editor.viewColumn, preserveFocus: false });
-                        // Additional delay to ensure editor is ready
-                        await new Promise(resolve => setTimeout(resolve, 200));
-                        // Use foldAll to fold all log entries
+                        // Simply fold the already-active editor
                         await vscode.commands.executeCommand('editor.foldAll');
                         console.log('[DevMirror] Applied foldAll to:', editor.document.uri.fsPath);
                     } catch (e) {
                         console.log('[DevMirror] Failed to fold:', e);
                     }
-                }, 800);  // Increased delay for editor to fully load
+                }, 800);  // Delay for editor to fully load
             }
         }
     });
 
-    // Also watch when visible text editors change (for split views)
-    vscode.window.onDidChangeVisibleTextEditors(async (editors) => {
-        for (const editor of editors) {
-            if (editor.document.uri.fsPath.includes('devmirror-logs') && editor.document.uri.fsPath.endsWith('.log')) {
-                if (autoFold) {
-                    console.log('[DevMirror] Visible editor changed to log file:', editor.document.uri.fsPath);
-                    setTimeout(async () => {
-                        try {
-                            // Make sure this editor is active before folding
-                            if (editor === vscode.window.activeTextEditor) {
-                                await vscode.commands.executeCommand('editor.foldAll');
-                                console.log('[DevMirror] Applied foldAll on visibility change:', editor.document.uri.fsPath);
-                            }
-                        } catch {
-                            // Silent fail
-                        }
-                    }, 800);
-                }
-            }
-        }
-    });
+    // Remove the onDidChangeVisibleTextEditors handler entirely!
+    // It's redundant with onDidChangeActiveTextEditor and contributes to the event storm.
+    // When the active editor changes, that's sufficient for our folding needs.
 
     // Setup command
     const setupCommand = vscode.commands.registerCommand('devmirror.setup', async () => {
