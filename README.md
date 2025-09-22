@@ -2,21 +2,21 @@
 
 **Capture 100% of browser console output using Chrome DevTools Protocol with Puppeteer**
 
-[![Version](https://img.shields.io/badge/version-0.4.44-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.51-blue.svg)](CHANGELOG.md)
 [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE.txt)
 
 DevMirror is a production-ready VS Code extension that captures ALL browser console output, network errors, security warnings, and browser events to timestamped log files. Perfect for debugging web applications and Adobe CEP extensions.
 
-## 🚀 Latest Release: v0.4.44
+## 🚀 Latest Release: v0.4.51
 
 **Major Improvements**:
-- **Smart Context Detection** - Intelligently determines whether to capture initial or fresh contexts based on connection timing
-- **Single WebSocket Connection** - Fixed duplicate message issues by ensuring only one CDP connection per session
-- **Clean Shutdown** - Proper signal handling (SIGINT/SIGTERM) for instant cleanup when dev server stops
-- **JSON Formatting** - Multi-line JSON objects now properly indent for clean VS Code folding
-- **Compact Timestamps** - Streamlined format: `yymmddThh:mm:ss.ms`
-- **Non-Invasive Integration** - Run alongside existing loggers without conflicts
+- **Fixed Reconnect Loop** - Proper throttling prevents aggressive reconnection attempts
+- **Setup Wizard** - Visual interface for configuring DevMirror with dropdowns and options
+- **Auto-Open Browser** - New config option to automatically open browser in CEF mode
+- **Quick Add Scripts** - Plus button for instant mirror script creation
+- **Undo Changes** - Restore original package.json with one click
+- **Wiki Documentation** - Comprehensive guides and API reference
 
 See [CHANGELOG.md](CHANGELOG.md) for complete version history.
 
@@ -60,20 +60,21 @@ This creates:
 - `devmirror.config.json` - Configuration file
 - Modified `package.json` - Adds `:mirror` scripts
 
-### Monorepo Support
+### Visual Setup Options
 
-DevMirror now includes a **DevMirror Scripts** panel in the Explorer sidebar:
+DevMirror includes a **DevMirror Scripts** panel in the Explorer sidebar:
 
-1. **View All package.json Files** - Automatically discovers all package.json files in your workspace
-2. **One-Click Mirror Scripts** - Click the + button next to any dev/start script to add a :mirror version
-3. **Auto-Detection** - Only shows scripts that don't already have mirror versions
-4. **Dependency Check** - Automatically prompts to install `concurrently` if missing
+1. **Quick Add (+)** - Click the + button for instant mirror script with defaults
+2. **Setup Wizard (⚙️)** - Click gear for advanced configuration options
+3. **Undo Changes (↩)** - Restore original package.json if needed
+4. **Auto-Detection** - Only shows scripts that don't already have mirror versions
+5. **Monorepo Support** - Discovers all package.json files in workspace
 
-To use:
-- Look for "DevMirror Scripts" in your Explorer sidebar
-- Expand any package.json to see available scripts
-- Click the + button to add a mirror script
-- Use the refresh button to update the list
+Setup Wizard Options:
+- Execution Mode (immediate vs wait)
+- Start Trigger (port detection vs user input)
+- Target Mode (CDP, CEF, auto-detect)
+- Integration Mode (replace vs companion)
 
 ### Daily Development
 
@@ -165,7 +166,8 @@ DevMirror will auto-detect your dev server port!
 {
     "mode": "cef",
     "cefPort": 8555,  // Your CEF debug port from .debug file
-    "outputDir": "./devmirror-logs"
+    "outputDir": "./devmirror-logs",
+    "autoOpenBrowser": true  // Auto-open browser to debug interface
 }
 ```
 
@@ -209,10 +211,12 @@ DevMirror will auto-detect your dev server port!
 
 ## Commands
 
-- `DevMirror: Setup Project` - Initial setup for your project (creates config, modifies package.json)
-- `DevMirror: Start Capture` - Start capturing console output directly from VS Code
+- `DevMirror: Setup Project` - Initial setup for your project (creates config)
+- `DevMirror: Start Capture` - Start capturing console output
 - `DevMirror: Stop Capture` - Stop the active capture session
-- `DevMirror: Show Logs` - Open the current log file with auto-folding enabled
+- `DevMirror: Show Logs` - Open logs directory
+- `DevMirror: Open Settings` - Open DevMirror settings
+- `DevMirror: Refresh Scripts` - Reload package.json scripts tree
 
 ## Status Bar
 
@@ -266,7 +270,7 @@ npx devmirror-cli
 - No code modifications required
 - Zero dependency conflicts
 
-See [INTEGRATION.md](INTEGRATION.md) for detailed integration patterns.
+See [INTEGRATION.md](docs/INTEGRATION.md) for detailed integration patterns.
 
 ## Troubleshooting
 
@@ -299,14 +303,13 @@ Change your dev server port in `devmirror.config.json`:
 
 ## Technical Architecture
 
-- **HTTP IPC Communication** - Extension runs local server on port 37240 for CLI messaging
-- **PID-Based Monitoring** - Direct process tracking ensures accurate status detection
-- **No Status Files** - Clean architecture with no temporary files to manage
-- **Direct Activation** - CLI sends path/PID data via HTTP POST for instant activation
-- **Smart Context Detection** - Uses connection attempt count to determine if CEF was already running
-- **Single WebSocket Architecture** - Maintains exactly one CDP connection to prevent duplicates
-- **Passive Port Monitoring** - Checks CEF availability without creating connections
-- **Signal Handling** - Proper cleanup on SIGINT/SIGTERM for instant shutdown
+- **Chrome DevTools Protocol** - Direct CDP connection via Puppeteer-core
+- **WebSocket Management** - Single connection with proper cleanup
+- **Reconnect Throttling** - Max 10 attempts with 5-second delays
+- **HTTP IPC** - Extension runs local server on port 37240
+- **Status Monitoring** - Real-time log count and session duration
+- **Auto Port Detection** - Finds running dev servers automatically
+- **Signal Handling** - Proper cleanup on SIGINT/SIGTERM
 
 ## Performance
 
@@ -342,6 +345,6 @@ Report issues at: https://github.com/ivg-design/devMirror/issues
 
 ---
 
-**Made with ❤️ for developers who need to see EVERYTHING**
+**Made for developers who need to see EVERYTHING**
 
 © 2025 IVG Design
