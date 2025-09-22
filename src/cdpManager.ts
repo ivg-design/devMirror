@@ -925,6 +925,15 @@ export class CDPManager {
                 console.log(`   [${index}] ${target.type}: ${target.title} - ${target.url}`);
             });
 
+            // Log reconnection event if this is a reconnection
+            if (this.isReconnecting && this.reconnectAttempts > 0 && this.logWriter) {
+                this.logWriter.write({
+                    type: 'lifecycle',
+                    message: '════════════ CEF RECONNECTED ════════════',
+                    timestamp: Date.now()
+                });
+            }
+
             // Find the CEP extension target - be more flexible in matching
             let extensionTarget = targets.find((target: any) =>
                 target.type === 'page' &&
@@ -1406,6 +1415,17 @@ export class CDPManager {
                         this.reconnectAttempts++;
                         console.log(`   🔄 Auto-reconnecting to CEF debugger... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
+                        // On reconnection during the same DevMirror session:
+                        // We should accept messages from the current context since this is
+                        // a continuation of the same debugging session. The context isn't stale
+                        // because DevMirror has been running continuously.
+                        // Only ignore contexts when DevMirror itself is restarted while CEF is already running.
+                        console.log('   📌 Reconnected - accepting existing context (same DevMirror session)');
+                        this.waitingForFreshContext = false;
+                        // Don't clear initialContextsSeen - keep tracking which contexts were pre-existing
+                        // But set currentContextId to null to accept the next context we see
+                        this.currentContextId = null;
+
                         try {
                             const reconnected = await this.connectToCEFDebugger(cefPort, config);
                             if (reconnected) {
@@ -1436,6 +1456,15 @@ export class CDPManager {
                         return;
                     }
                     console.log('\n⚠️  CEF WebSocket closed - will auto-reconnect');
+
+                    // Log disconnect event to file
+                    if (this.logWriter) {
+                        this.logWriter.write({
+                            type: 'lifecycle',
+                            message: '════════════ CEF DISCONNECTED ════════════',
+                            timestamp: Date.now()
+                        });
+                    }
 
                     // Clean up current connection
                     if (this.client) {
