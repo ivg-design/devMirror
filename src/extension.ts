@@ -295,6 +295,9 @@ export function activate(context: vscode.ExtensionContext) {
             showCollapseAll: true
         });
 
+        // Initialize the wizard context (hidden by default)
+        vscode.commands.executeCommand('setContext', 'devmirror.showWizard', false);
+
         // Register the wizard view provider
         const wizardProvider = new WizardViewProvider(context.extensionUri);
         context.subscriptions.push(

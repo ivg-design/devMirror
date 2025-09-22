@@ -2,6 +2,22 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.50] - 2025-09-22
+
+### Fixed
+- Fixed "Cannot read properties of undefined (includes)" error when scriptCommand is undefined
+- Wizard panel now properly hides/shows using VS Code context API
+- Cancel and Generate buttons now properly close the wizard panel
+
+### Changed
+- Removed script info box from wizard (was showing empty command)
+- Wizard visibility controlled via `devmirror.showWizard` context
+- Panel automatically hides after configuration or cancellation
+
+### Improved
+- Better handling of wizard lifecycle with proper show/hide functionality
+- Can now reopen wizard after cancelling without manual intervention
+
 ## [0.4.49] - 2025-09-22
 
 ### Fixed
