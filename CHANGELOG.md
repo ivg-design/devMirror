@@ -2,6 +2,18 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.59] - 2025-09-22
+
+### Fixed
+- **Extension not activating** - Added proper activation events so extension loads in all windows
+- **Status bar not appearing** - Extension now activates on startup, not just on command
+
+### Changed
+- Added `onStartupFinished` activation event to ensure extension loads
+- Added workspace-based activation for folders with devmirror.config.json
+- Added activation when devmirror-logs folder exists
+- Extension now properly activates in every VS Code window
+
 ## [0.4.58] - 2025-09-22
 
 ### Fixed
