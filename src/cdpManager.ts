@@ -26,6 +26,11 @@ export class CDPManager {
     private initialContextsSeen: Set<number> = new Set();  // Track initial contexts to ignore
     private connectionAttempts: number = 0;  // Track how many times we tried to connect
     private activeWebSocket: any = null;  // Track active WebSocket for cleanup
+    private reconnectTimer: NodeJS.Timeout | null = null;
+    private isReconnecting: boolean = false;
+    private reconnectAttempts: number = 0;
+    private maxReconnectAttempts: number = 10;
+    private reconnectDelay: number = 5000; // 5 seconds between attempts
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -453,10 +458,19 @@ export class CDPManager {
     async stop(): Promise<void> {
         console.log('\n🛑 Shutting down DevMirror...');
 
+        // Clear any pending reconnect timers
+        if (this.reconnectTimer) {
+            clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        this.isReconnecting = false;
+        this.reconnectAttempts = 0;
+
         // Close WebSocket immediately to stop receiving messages
         if (this.activeWebSocket) {
             console.log('   Closing WebSocket connection...');
             try {
+                this.activeWebSocket.removeAllListeners?.();
                 this.activeWebSocket.close();
             } catch (e) {
                 // Ignore errors on close
@@ -553,9 +567,24 @@ export class CDPManager {
             console.log('\n✅ DevMirror connected directly to CEF via CDP');
             console.log('   ✅ Console capture active - no browser needed!');
             console.log('   ✅ Capturing ALL console output to log files');
-            console.log('\n📝 To view the console in a browser (optional):');
-            console.log(`   Open Chrome and navigate to http://localhost:${config.cefPort}`);
-            console.log('   Then click on your extension target');
+
+            // Auto-open browser if configured
+            if (config.autoOpenBrowser) {
+                console.log('\n🌐 Opening browser to CEF debug interface...');
+                const url = `http://localhost:${config.cefPort}`;
+                try {
+                    const open = require('open');
+                    await open(url);
+                    console.log('   ✅ Browser opened');
+                } catch (error) {
+                    console.log('   ⚠️ Could not auto-open browser. Manually navigate to:');
+                    console.log(`   ${url}`);
+                }
+            } else {
+                console.log('\n📝 To view the console in a browser (optional):');
+                console.log(`   Open Chrome and navigate to http://localhost:${config.cefPort}`);
+                console.log('   Then click on your extension target');
+            }
         } else {
             console.log('\n❌ Could not connect to CEF after ${maxRetries} attempts');
             console.log('   DevMirror will keep trying in the background...');
@@ -916,9 +945,21 @@ export class CDPManager {
             // Clean up any existing WebSocket connection
             if (this.activeWebSocket) {
                 console.log('   🧹 Cleaning up existing WebSocket connection');
-                this.activeWebSocket.close();
+                try {
+                    this.activeWebSocket.removeAllListeners?.();
+                    this.activeWebSocket.close();
+                } catch (e) {
+                    // Ignore errors during cleanup
+                }
                 this.activeWebSocket = null;
             }
+
+            // Clear any pending reconnect
+            if (this.reconnectTimer) {
+                clearTimeout(this.reconnectTimer);
+                this.reconnectTimer = null;
+            }
+            this.isReconnecting = false;
 
             // For CEF, we need a direct WebSocket connection without browser-level abstractions
             try {
@@ -927,7 +968,7 @@ export class CDPManager {
 
                 // Create direct WebSocket connection to CEF
                 const ws = new WebSocket(browserWSEndpoint);
-                this.activeWebSocket = ws;  // Track for cleanup
+                // Note: activeWebSocket is set later after all setup
 
                 let messageId = 1;
                 const pendingCallbacks = new Map();
@@ -1314,42 +1355,89 @@ export class CDPManager {
                 // await this.client.send('Page.reload', { ignoreCache: false });
 
                 // Store WebSocket for cleanup
-                let reconnectTimer: NodeJS.Timeout | null = null;
+                this.activeWebSocket = ws;
 
                 // Monitor for disconnection and auto-reconnect
                 const setupReconnect = () => {
-                    if (reconnectTimer) {
-                        clearTimeout(reconnectTimer);
+                    // Prevent multiple reconnect attempts
+                    if (this.isReconnecting || this.reconnectTimer) {
+                        return;
                     }
-                    reconnectTimer = setTimeout(async () => {
-                        console.log('   🔄 Auto-reconnecting to CEF debugger...');
-                        const reconnected = await this.connectToCEFDebugger(cefPort, config);
-                        if (!reconnected) {
-                            // Keep trying if reconnection failed
+
+                    // Check if we've exceeded max attempts
+                    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+                        console.log(`   ❌ Max reconnection attempts (${this.maxReconnectAttempts}) reached. Stopping.`);
+                        return;
+                    }
+
+                    this.reconnectTimer = setTimeout(async () => {
+                        // Double-check we're not already reconnecting
+                        if (this.isReconnecting) {
+                            return;
+                        }
+
+                        // Don't reconnect if we've been stopped
+                        if (this.activeWebSocket === null) {
+                            return;
+                        }
+
+                        this.isReconnecting = true;
+                        this.reconnectAttempts++;
+                        console.log(`   🔄 Auto-reconnecting to CEF debugger... (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+                        try {
+                            const reconnected = await this.connectToCEFDebugger(cefPort, config);
+                            if (reconnected) {
+                                // Reset attempts on successful reconnection
+                                this.reconnectAttempts = 0;
+                                console.log('   ✅ Successfully reconnected to CEF');
+                                this.isReconnecting = false;
+                            } else {
+                                // Schedule next attempt
+                                this.reconnectTimer = null;
+                                this.isReconnecting = false;
+                                setupReconnect();
+                            }
+                        } catch (error) {
+                            console.log('   ❌ Reconnection failed:', error);
+                            this.reconnectTimer = null;
+                            this.isReconnecting = false;
                             setupReconnect();
                         }
-                    }, 3000);
+                    }, this.reconnectDelay);
                 };
 
                 // Monitor WebSocket close
                 ws.on('close', () => {
-                    // Don't reconnect if we're shutting down
-                    if (this.activeWebSocket === null) {
-                        console.log('   WebSocket closed (shutdown)');
+                    // Don't reconnect if we're shutting down or this isn't our active socket
+                    if (this.activeWebSocket === null || this.activeWebSocket !== ws) {
+                        console.log('   WebSocket closed (shutdown or replaced)');
                         return;
                     }
                     console.log('\n⚠️  CEF WebSocket closed - will auto-reconnect');
-                    this.client = null;
+
+                    // Clean up current connection
+                    if (this.client) {
+                        this.client.removeAllListeners?.();
+                        this.client = null;
+                    }
+
                     setupReconnect();
                 });
 
                 ws.on('error', (error: any) => {
-                    // Don't reconnect if we're shutting down
-                    if (this.activeWebSocket === null) {
+                    // Don't reconnect if we're shutting down or this isn't our active socket
+                    if (this.activeWebSocket === null || this.activeWebSocket !== ws) {
                         return;
                     }
                     console.log('\n⚠️  CEF WebSocket error:', error.message);
-                    this.client = null;
+
+                    // Clean up current connection
+                    if (this.client) {
+                        this.client.removeAllListeners?.();
+                        this.client = null;
+                    }
+
                     setupReconnect();
                 });
 
@@ -1374,10 +1462,13 @@ export class CDPManager {
         } catch (error: any) {
             console.log('   Could not connect to CEF debugger:', error.message);
 
-            // Retry connection after delay
-            setTimeout(() => {
-                this.connectToCEFDebugger(cefPort, config);
-            }, 5000);
+            // Don't auto-retry here if we're already in a reconnect loop
+            if (!this.isReconnecting) {
+                // Only retry if this is the initial connection attempt
+                setTimeout(() => {
+                    this.connectToCEFDebugger(cefPort, config);
+                }, 5000);
+            }
 
             return false;
         }

@@ -8,6 +8,7 @@ export interface DevMirrorConfig {
     mode: 'cdp' | 'cef';
     cefPort?: number;
     autoDetectPort?: boolean;  // Auto-detect running dev server
+    autoOpenBrowser?: boolean;  // Auto-open browser in CEF mode
     throttle?: {
         maxPerSecond: number;
         suppressAfter: number;

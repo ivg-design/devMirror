@@ -2,6 +2,24 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.51] - 2025-09-22
+
+### Fixed
+- Fixed aggressive auto-reconnect loop in CEF mode that was creating multiple simultaneous connection attempts
+- Added proper reconnect throttling with max attempts (10) and delay between attempts (5 seconds)
+- Improved connection state management to prevent reconnect cascades
+- Fixed WebSocket cleanup to properly remove event listeners
+
+### Added
+- New `autoOpenBrowser` configuration option for CEF mode
+- Automatically opens browser to CEF debug interface when enabled
+- Requires 'open' package for cross-platform browser launching
+
+### Changed
+- Reconnect logic now uses class-level state tracking instead of local variables
+- WebSocket close/error handlers now check if socket is still active before reconnecting
+- Improved reconnect attempt logging with attempt counter
+
 ## [0.4.50] - 2025-09-22
 
 ### Fixed
