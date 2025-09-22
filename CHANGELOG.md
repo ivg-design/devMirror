@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.65] - 2025-09-22
+
+### Added
+- **Browser auto-refresh on CEF reconnection** - DevTools automatically reopens when CEF reconnects
+  - Refreshes browser DevTools after successful reconnection
+  - No manual refresh needed when extension reloads
+  - Keeps DevTools in sync with CEF connection state
+
 ## [0.4.64] - 2025-09-22
 
 ### Added
