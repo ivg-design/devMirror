@@ -17,18 +17,20 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Start HTTP server for IPC with CLI
     const server = http.createServer((req, res) => {
+        console.log(`[DevMirror] HTTP request received: ${req.method} ${req.url}`);
         if (req.method === 'POST' && req.url === '/activate') {
             let body = '';
             req.on('data', chunk => body += chunk.toString());
             req.on('end', () => {
                 try {
                     const args = JSON.parse(body);
-                    console.log('DevMirror activation received:', args);
+                    console.log('[DevMirror] Activation received:', args);
+                    console.log('[DevMirror] Current workspace folders:', vscode.workspace.workspaceFolders?.map(f => f.uri.fsPath));
                     statusMonitor.activate(args);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ status: 'activated' }));
                 } catch (error) {
-                    console.error('Failed to process activation:', error);
+                    console.error('[DevMirror] Failed to process activation:', error);
                     res.writeHead(400, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify({ error: 'Invalid request' }));
                 }
@@ -70,10 +72,10 @@ export function activate(context: vscode.ExtensionContext) {
     // File refresh control
     let refreshTimeout: NodeJS.Timeout | null = null;
 
-    // Set up the log change callback
+    // Set up the log change callback (for when status monitor is active)
     statusMonitor.onLogChange(() => {
         const logPath = statusMonitor.getCurrentLogPath();
-        console.log('[DevMirror] Log change detected, path:', logPath, 'autoRefresh:', autoRefresh, 'autoFold:', autoFold);
+        console.log('[DevMirror] Status monitor log change detected, path:', logPath, 'autoRefresh:', autoRefresh, 'autoFold:', autoFold);
         if (logPath && autoRefresh) {
             refreshAndFold(vscode.Uri.file(logPath));
         }
@@ -152,6 +154,30 @@ export function activate(context: vscode.ExtensionContext) {
             refreshTimeout = null;
         }, 1500);
     };
+
+    // Set up a file watcher for devmirror-logs directory
+    // This will work independently of the status monitor
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (workspaceFolders) {
+        workspaceFolders.forEach(folder => {
+            const logsPattern = new vscode.RelativePattern(
+                folder,
+                '**/devmirror-logs/**/*.log'
+            );
+
+            const watcher = vscode.workspace.createFileSystemWatcher(logsPattern);
+
+            // Watch for changes to log files
+            watcher.onDidChange((uri) => {
+                console.log('[DevMirror] File watcher detected change:', uri.fsPath);
+                if (autoRefresh) {
+                    refreshAndFold(uri);
+                }
+            });
+
+            context.subscriptions.push(watcher);
+        });
+    }
 
     // Also watch when files are opened
     vscode.window.onDidChangeActiveTextEditor(async (editor) => {

@@ -2,6 +2,19 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.54] - 2025-09-22
+
+### Fixed
+- **CLI wrapper version sorting** - Fixed to properly find latest extension version (was using 0.4.50 instead of 0.4.53+)
+- **File watcher for log folding** - Added independent file watcher that works even when status bar isn't active
+- **Path comparison in status monitor** - Improved path normalization and added debug logging
+- **HTTP server debugging** - Added detailed logging for activation messages
+
+### Improved
+- Version comparison now uses proper semantic versioning logic
+- Log folding now works via file system watcher independent of status monitor
+- Better debugging output for troubleshooting status bar activation issues
+
 ## [0.4.53] - 2025-09-22
 
 ### Fixed
