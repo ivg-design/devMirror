@@ -90,13 +90,38 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
     }
 
     private hideWizard() {
-        // Collapse the wizard view
+        // Clear the wizard content and show a placeholder message
         if (this._view) {
-            // There's no direct API to collapse, but we can hide by clearing content
-            this._view.webview.html = '<html><body style="padding:10px; color:#888;">Select a script and click the gear icon to configure.</body></html>';
+            // Show minimal placeholder content
+            this._view.webview.html = `<!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    body {
+                        padding: 10px;
+                        color: #666;
+                        font-family: system-ui, -apple-system, sans-serif;
+                        font-size: 12px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div style="text-align: center; padding-top: 20px;">
+                    Click ⚙️ on a script to configure
+                </div>
+            </body>
+            </html>`;
         }
-        // Focus back to tree view
+
+        // Focus back to the DevMirror Scripts tree
         vscode.commands.executeCommand('devmirrorPackages.focus');
+
+        // Notify user that configuration is complete
+        if (this.scriptName) {
+            vscode.window.showInformationMessage(
+                `✅ DevMirror configuration saved: "${this.scriptName}:mirror"`
+            );
+        }
     }
 
     private async analyzeScript(command: string): Promise<any> {
@@ -169,10 +194,6 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
             packageJson.scripts[`${this.scriptName}:mirror`] = mirrorScript;
 
             fs.writeFileSync(this.packageJsonPath, JSON.stringify(packageJson, null, 2));
-
-            vscode.window.showInformationMessage(
-                `✅ DevMirror configuration generated for "${this.scriptName}:mirror"`
-            );
 
             this.hideWizard();
 

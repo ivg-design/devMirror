@@ -2,6 +2,13 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.47] - 2025-09-22
+
+### Fixed
+- Wizard panel now properly clears after configuration or cancellation
+- Improved wizard panel behavior to show placeholder message when not in use
+- Added better user feedback when configuration is saved
+
 ## [0.4.46] - 2025-09-21
 
 ### Added
