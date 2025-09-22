@@ -1,5 +1,8 @@
 import { LogWriter } from './logWriter';
 import { DevMirrorConfig } from './configHandler';
+import { ConsoleEventHandler } from './handlers/ConsoleEventHandler';
+import { NetworkEventHandler } from './handlers/NetworkEventHandler';
+import { PageEventHandler } from './handlers/PageEventHandler';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as os from 'os';
@@ -31,6 +34,11 @@ export class CDPManager {
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 10;
     private reconnectDelay: number = 5000; // 5 seconds between attempts
+
+    // Event handlers
+    private consoleHandler!: ConsoleEventHandler;
+    private networkHandler!: NetworkEventHandler;
+    private pageHandler!: PageEventHandler;
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -69,6 +77,11 @@ export class CDPManager {
 
         this.logWriter = new LogWriter(config.outputDir);
         await this.logWriter.initialize();
+
+        // Initialize event handlers
+        this.consoleHandler = new ConsoleEventHandler(this.logWriter);
+        this.networkHandler = new NetworkEventHandler(this.logWriter);
+        this.pageHandler = new PageEventHandler(this.logWriter);
 
         // Auto-detect port if URL not provided or autoDetectPort is true
         let targetUrl = config.url;
@@ -199,44 +212,25 @@ export class CDPManager {
         await this.client.send('Security.enable');
         await this.client.send('Page.enable');
 
-        // Removed duplicate handlers - using universal capture in CEF mode instead
+        // Set up console capture for CDP mode
+        this.client.on('Runtime.consoleAPICalled', (event: any) => {
+            this.consoleHandler.handleConsoleAPI(event);
+        });
+
+        this.client.on('Runtime.exceptionThrown', (event: any) => {
+            this.consoleHandler.handleExceptionThrown(event.exceptionDetails);
+        });
 
         this.client.on('Network.loadingFailed', (event: any) => {
-            const errorText = event.errorText || 'Unknown error';
-            const blockedReason = event.blockedReason;
-
-            let message = `Failed to load: ${errorText}`;
-            if (blockedReason) {
-                message += ` (Blocked: ${blockedReason})`;
-            }
-
-            this.logWriter.write({
-                type: 'network',
-                message: message,
-                url: `Request ID: ${event.requestId}`,
-                timestamp: Date.now()
-            });
+            this.networkHandler.handleLoadingFailed(event);
         });
 
         this.client.on('Network.responseReceived', (event: any) => {
-            if (event.response.status >= 400) {
-                this.logWriter.write({
-                    type: 'network',
-                    message: `HTTP ${event.response.status}: ${event.response.statusText}`,
-                    url: event.response.url,
-                    timestamp: Date.now()
-                });
-            }
+            this.networkHandler.handleResponseReceived(event);
         });
 
         this.client.on('Log.entryAdded', (event: any) => {
-            this.logWriter.write({
-                type: 'browser',
-                level: event.entry.level,
-                message: event.entry.text,
-                source: event.entry.source,
-                timestamp: event.entry.timestamp * 1000
-            });
+            this.consoleHandler.handleLogEntry(event);
         });
 
         this.client.on('Security.securityStateChanged', (event: any) => {
@@ -519,6 +513,11 @@ export class CDPManager {
             const outputDir = config.outputDir || './devmirror-logs';
             this.logWriter = new LogWriter(outputDir);
             await this.logWriter.initialize();
+
+            // Initialize event handlers
+            this.consoleHandler = new ConsoleEventHandler(this.logWriter);
+            this.networkHandler = new NetworkEventHandler(this.logWriter);
+            this.pageHandler = new PageEventHandler(this.logWriter);
         }
 
         console.log('🎨 DevMirror Active (CEF Debug Mode - Direct Connection)');

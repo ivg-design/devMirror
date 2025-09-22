@@ -1,0 +1,182 @@
+import { LogWriter } from '../logWriter';
+
+export class ConsoleEventHandler {
+    private logWriter: LogWriter;
+
+    constructor(logWriter: LogWriter) {
+        this.logWriter = logWriter;
+    }
+
+    /**
+     * Process console events from Runtime.consoleAPICalled
+     */
+    handleConsoleAPI(params: any): void {
+        if (!this.logWriter) {
+            console.log('   ⚠️ LogWriter not ready for console event');
+            return;
+        }
+
+        try {
+            const args = params.args || [];
+            const type = params.type || 'log';
+
+            // Extract source location if available
+            let source = '';
+            if (params.stackTrace?.callFrames?.[0]) {
+                const frame = params.stackTrace.callFrames[0];
+                const fileName = frame.url ? frame.url.split('/').pop() : '';
+                if (fileName && frame.lineNumber) {
+                    source = `[${fileName}:${frame.lineNumber}] `;
+                }
+            }
+
+            // Convert all arguments to strings
+            const message = this.formatArguments(args);
+
+            // Only write if we have a message
+            if (message) {
+                // Map console types to LogWriter types
+                const logType = type === 'log' || type === 'info' || type === 'warn' ? 'console' :
+                               type === 'error' ? 'error' :
+                               type === 'debug' ? 'debug' : 'console';
+
+                this.logWriter.write({
+                    type: logType,
+                    message: source + message,
+                    timestamp: Date.now()
+                });
+            }
+        } catch (error) {
+            console.log('   Error capturing console event:', error);
+        }
+    }
+
+    /**
+     * Process runtime exceptions
+     */
+    handleExceptionThrown(details: any): void {
+        if (!this.logWriter) return;
+
+        const exception = details.exception;
+        let message = 'Uncaught exception';
+
+        if (exception) {
+            if (exception.description) {
+                message = exception.description;
+            } else if (exception.value) {
+                message = String(exception.value);
+            }
+        }
+
+        // Add stack trace if available
+        if (details.stackTrace?.callFrames?.length > 0) {
+            const frames = details.stackTrace.callFrames
+                .slice(0, 5)
+                .map((frame: any) => {
+                    const fileName = frame.url ? frame.url.split('/').pop() : 'unknown';
+                    return `    at ${frame.functionName || '<anonymous>'} (${fileName}:${frame.lineNumber}:${frame.columnNumber})`;
+                })
+                .join('\n');
+            message += '\n' + frames;
+        }
+
+        this.logWriter.write({
+            type: 'error',
+            message: message,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Process Log.entryAdded events
+     */
+    handleLogEntry(params: any): void {
+        if (!this.logWriter) return;
+
+        const entry = params.entry;
+        const level = entry.level || 'verbose';
+        const source = entry.source || 'other';
+
+        // Skip certain log sources to avoid noise
+        if (source === 'security' || source === 'deprecation') {
+            return;
+        }
+
+        const typeMap: { [key: string]: any } = {
+            'verbose': 'debug',
+            'info': 'console',
+            'warning': 'console',
+            'error': 'error'
+        };
+
+        const type = typeMap[level] || 'console';
+
+        this.logWriter.write({
+            type: type,
+            message: `[${source.toUpperCase()}] ${entry.text}`,
+            timestamp: Date.now()
+        });
+    }
+
+    /**
+     * Format console arguments into a string
+     */
+    private formatArguments(args: any[]): string {
+        return args.map((arg: any) => {
+            // Handle primitive values
+            if (arg.value !== undefined) {
+                return String(arg.value);
+            }
+
+            // Handle objects with preview (synchronous)
+            if (arg.type === 'object' && arg.preview?.properties) {
+                const props = arg.preview.properties
+                    .map((p: any) => `${p.name}: ${p.value || p.type}`)
+                    .join(', ');
+                const overflow = arg.preview.overflow ? ', ...' : '';
+                return `${arg.className || 'Object'} {${props}${overflow}}`;
+            }
+
+            // Handle description (including JSON objects and arrays)
+            if (arg.description) {
+                // Check if it's a JSON object or array and format it properly
+                if ((arg.description.startsWith('{') && arg.description.endsWith('}')) ||
+                    (arg.description.startsWith('[') && arg.description.endsWith(']'))) {
+                    try {
+                        // Parse and re-stringify with proper indentation
+                        const obj = JSON.parse(arg.description);
+                        const formatted = JSON.stringify(obj, null, 2);
+                        const lines = formatted.split('\n');
+                        // Add 2 spaces to ALL lines except first for proper indentation
+                        const indented = lines.map((line, i) => {
+                            return i === 0 ? line : '  ' + line;
+                        }).join('\n');
+                        return indented;
+                    } catch {
+                        // If parsing fails, return as-is
+                        return arg.description;
+                    }
+                }
+                return arg.description;
+            }
+
+            // Handle functions
+            if (arg.type === 'function') {
+                return '[Function' + (arg.className ? `: ${arg.className}` : '') + ']';
+            }
+
+            // Handle undefined
+            if (arg.type === 'undefined') {
+                return 'undefined';
+            }
+
+            // Handle symbols
+            if (arg.type === 'symbol') {
+                return arg.description || 'Symbol()';
+            }
+
+            // Fallback to type
+            return `[${arg.type}]`;
+        }).join(' ');
+    }
+}

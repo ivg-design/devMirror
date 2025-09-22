@@ -284,6 +284,7 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 }
             } else {
                 // Regular CDP mode
+                defaultConfig.mode = 'cdp';
                 const port = await this.detectDevServerPort(packageDir);
                 defaultConfig.url = `http://localhost:${port}`;
             }

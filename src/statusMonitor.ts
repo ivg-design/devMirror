@@ -32,6 +32,21 @@ export class StatusMonitor {
     }
 
     activate(args: { path: string; pid: number; url: string; logDir: string }): void {
+        // Check if this activation is for the current workspace
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!workspaceFolders) return;
+
+        // Check if any workspace folder matches or contains the activated path
+        const isForThisWorkspace = workspaceFolders.some(folder => {
+            const folderPath = folder.uri.fsPath;
+            return args.path === folderPath || args.path.startsWith(folderPath + path.sep);
+        });
+
+        if (!isForThisWorkspace) {
+            console.log(`Ignoring activation for ${args.path} - not in this workspace`);
+            return;
+        }
+
         // If we already have an active session with the same path, just update the PID
         if (this.activeSession && this.activeSession.path === args.path) {
             this.activeSession.pid = args.pid;
