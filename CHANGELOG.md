@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.62] - 2025-09-22
+
+### Fixed
+- **autoOpenBrowser setting** - Now properly included in generated config files
+  - Added to Setup Wizard config generation for CEF mode
+  - Added to quick setup (+ button) config generation for CEF mode
+  - Setting is read from VS Code configuration and included in devmirror.config.json
+
 ## [0.4.61] - 2025-09-22
 
 ### Fixed - CEF Reconnection

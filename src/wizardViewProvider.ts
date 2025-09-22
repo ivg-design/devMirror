@@ -192,7 +192,10 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
             const devmirrorConfig = {
                 mode: config.targetMode,
                 outputDir: './devmirror-logs',
-                ...(config.targetMode === 'cef' && { cefPort: parseInt(config.port) }),
+                ...(config.targetMode === 'cef' && {
+                    cefPort: parseInt(config.port),
+                    autoOpenBrowser: vscode.workspace.getConfiguration('devmirror').get('autoOpenBrowser', false)
+                }),
                 ...(config.executionMode === 'wait' && { waitMode: true }),
                 ...(config.integrationMode === 'companion' && { companion: true, preserveLogger: true })
             };

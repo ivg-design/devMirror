@@ -282,6 +282,8 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                     defaultConfig.cefPort = 8860; // Default CEF port
                     defaultConfig['// comment'] = 'Update cefPort to match your .debug file setting';
                 }
+                // Add autoOpenBrowser from VS Code settings
+                defaultConfig.autoOpenBrowser = vscode.workspace.getConfiguration('devmirror').get('autoOpenBrowser', false);
             } else {
                 // Regular CDP mode
                 defaultConfig.mode = 'cdp';
