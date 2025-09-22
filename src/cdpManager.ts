@@ -590,16 +590,40 @@ export class CDPManager {
             console.log('   ✅ Capturing ALL console output to log files');
 
             // Auto-open browser if configured
+            console.log(`\n📌 autoOpenBrowser setting: ${config.autoOpenBrowser}`);
             if (config.autoOpenBrowser) {
-                console.log('\n🌐 Opening browser to CEF debug interface...');
+                console.log('🌐 Opening browser to CEF debug interface...');
                 const url = `http://localhost:${config.cefPort}`;
                 try {
-                    const open = require('open');
+                    // Try to use the open package with dynamic import
+                    const openModule = await import('open');
+                    const open = openModule.default;
+                    console.log('   Opening URL:', url);
                     await open(url);
                     console.log('   ✅ Browser opened');
-                } catch (error) {
-                    console.log('   ⚠️ Could not auto-open browser. Manually navigate to:');
-                    console.log(`   ${url}`);
+                } catch (error: any) {
+                    // Fallback to child_process
+                    console.log('   Using fallback method to open browser...');
+                    const { exec } = require('child_process');
+                    const platform = process.platform;
+
+                    let command;
+                    if (platform === 'darwin') {
+                        command = `open "${url}"`;
+                    } else if (platform === 'win32') {
+                        command = `start "${url}"`;
+                    } else {
+                        command = `xdg-open "${url}"`;
+                    }
+
+                    exec(command, (err: any) => {
+                        if (err) {
+                            console.log('   ⚠️ Could not auto-open browser:', err.message);
+                            console.log(`   Manually navigate to: ${url}`);
+                        } else {
+                            console.log('   ✅ Browser opened');
+                        }
+                    });
                 }
             } else {
                 console.log('\n📝 To view the console in a browser (optional):');

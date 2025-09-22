@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.63] - 2025-09-22
+
+### Fixed
+- **autoOpenBrowser implementation** - Fixed browser auto-open functionality
+  - Added fallback method using child_process when open package fails
+  - Added better error handling and debug logging
+  - Works cross-platform (macOS, Windows, Linux)
+
 ## [0.4.62] - 2025-09-22
 
 ### Fixed
