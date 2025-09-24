@@ -2,6 +2,36 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.75] - 2025-09-24
+
+### Fixed
+- **Scripts Panel**: Fixed (+) button to use shim path instead of hardcoded CLI path
+- Package.json scripts created via panel now use relative path to shim
+- Properly detects ESM packages and uses .cjs extension when needed
+- Ensures scripts work correctly in both single-repo and monorepo setups
+
+## [0.4.74] - 2025-09-24
+
+### Added
+- **ESM-Aware Shim Generation**: Automatically detects package.json type:module
+- Creates .cjs shims for ESM projects, .js for CommonJS projects
+- Cleans up old shims with wrong extensions on activation
+
+### Fixed
+- Monorepo support with proper relative path calculations
+- Scripts continue working after extension updates
+
+## [0.4.73] - 2025-09-24
+
+### Added
+- **Shim-Based CLI Resolution**: Implemented stable shim pattern for dynamic paths
+- Creates .vscode/devmirror/cli.js shim and config.json in each workspace
+- Shim reads current extension path from config at runtime
+
+### Fixed
+- Extension size reduced from 41MB to ~150KB (removed unpacked directories)
+- README updated to remove NPM package references
+
 ## [0.4.72] - 2025-09-24
 
 ### Fixed
