@@ -1,104 +1,64 @@
-# Source files and build artifacts
+# Source and development files
 .vscode/**
 .vscode-test/**
 src/**
 out/**
-.gitignore
-.yarnrc
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/.eslintrc.json
-webpack.config.js
 .git/**
 .github/**
-devMirror/**
-devMirror-*/**
 *.vsix
 .DS_Store
 
-# Development and test files
-node_modules/**/test/**
-node_modules/**/tests/**
-node_modules/**/__tests__/**
-node_modules/**/spec/**
-node_modules/**/specs/**
-node_modules/**/*.test.js
-node_modules/**/*.spec.js
-node_modules/**/jest.config.js
-node_modules/**/karma.conf.js
-node_modules/**/webpack.config.js
-node_modules/**/rollup.config.js
-node_modules/**/gulpfile.js
-node_modules/**/Gruntfile.js
+# Development files
+webpack.config.js
+tsconfig.json
+.eslintrc.json
+.gitignore
+.yarnrc
+vsc-extension-quickstart.md
 
-# Documentation and examples
-node_modules/**/README*
-node_modules/**/readme*
-node_modules/**/CHANGELOG*
-node_modules/**/changelog*
-node_modules/**/HISTORY*
-node_modules/**/LICENSE*
-node_modules/**/license*
-node_modules/**/CONTRIBUTING*
-node_modules/**/AUTHORS*
-node_modules/**/CONTRIBUTORS*
-node_modules/**/example/**
-node_modules/**/examples/**
-node_modules/**/demo/**
-node_modules/**/demos/**
-node_modules/**/doc/**
-node_modules/**/docs/**
-node_modules/**/.github/**
+# Extra project files
+devMirror/**
+devMirror-*/**
+docs/**
+wiki/**
+create-extension.sh
+TEST-PLAN-*.md
+.gitmodules
 
-# Build and development tools
-node_modules/**/.*
-node_modules/**/*.md
-node_modules/**/*.txt
-node_modules/**/*.yml
-node_modules/**/*.yaml
-node_modules/**/*.json
-!node_modules/**/package.json
-node_modules/**/Makefile
-node_modules/**/makefile
-node_modules/**/*.mk
-
-# TypeScript definition files (since we're using compiled JS)
-node_modules/**/*.d.ts
-
-# Unnecessary binaries and executables
-node_modules/**/bin/**
-node_modules/**/.bin/**
-
-# Exclude most of node_modules but keep runtime essentials
+# AGGRESSIVE node_modules exclusion - keep only essentials
 node_modules/**
 
-# Include only runtime dependencies (not dev dependencies)
-!node_modules/puppeteer-core/
-!node_modules/puppeteer-core/**
-!node_modules/ws/
-!node_modules/ws/**
-!node_modules/open/
-!node_modules/open/**
+# Puppeteer core - ONLY keep essential files
+!node_modules/puppeteer-core/lib/
+!node_modules/puppeteer-core/lib/**
+!node_modules/puppeteer-core/package.json
 
-# Include minimal required dependencies of the above
-!node_modules/cross-fetch/
-!node_modules/cross-fetch/**
-!node_modules/extract-zip/
-!node_modules/extract-zip/**
-!node_modules/https-proxy-agent/
-!node_modules/https-proxy-agent/**
-!node_modules/proxy-from-env/
-!node_modules/proxy-from-env/**
-!node_modules/tar-fs/
-!node_modules/tar-fs/**
-!node_modules/unbzip2-stream/
-!node_modules/unbzip2-stream/**
-!node_modules/debug/
-!node_modules/debug/**
-!node_modules/ms/
-!node_modules/ms/**
+# WS - minimal files
+!node_modules/ws/lib/
+!node_modules/ws/lib/**
+!node_modules/ws/package.json
 
-# Exclude test and documentation files from included packages
+# Open - minimal files
+!node_modules/open/index.js
+!node_modules/open/package.json
+
+# Essential dependencies of puppeteer-core (minimal)
+!node_modules/cross-fetch/dist/
+!node_modules/cross-fetch/dist/**
+!node_modules/cross-fetch/package.json
+
+!node_modules/extract-zip/index.js
+!node_modules/extract-zip/package.json
+
+!node_modules/https-proxy-agent/dist/
+!node_modules/https-proxy-agent/dist/**
+!node_modules/https-proxy-agent/package.json
+
+!node_modules/debug/src/
+!node_modules/debug/src/**
+!node_modules/debug/package.json
+
+# But exclude ALL documentation, tests, examples from ANY included package
 node_modules/**/test/**
 node_modules/**/tests/**
 node_modules/**/example/**
@@ -107,8 +67,12 @@ node_modules/**/benchmark/**
 node_modules/**/doc/**
 node_modules/**/docs/**
 node_modules/**/*.md
+node_modules/**/README*
 node_modules/**/LICENSE*
 node_modules/**/CHANGELOG*
+node_modules/**/HISTORY*
 node_modules/**/.github/
-node_modules/**/.nyc_output/
 node_modules/**/coverage/
+node_modules/**/.nyc_output/
+node_modules/**/bin/
+node_modules/**/.bin/

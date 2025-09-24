@@ -13,10 +13,7 @@ module.exports = {
 
   externals: {
     vscode: 'commonjs vscode',
-    // Keep these as external since they need runtime access
-    'puppeteer-core': 'commonjs puppeteer-core',
-    'ws': 'commonjs ws',
-    'open': 'commonjs open',
+    // Bundle everything else to reduce file count
   },
 
   resolve: {
