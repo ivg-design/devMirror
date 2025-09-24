@@ -38,10 +38,12 @@ export class ScriptModifier {
                 const originalScript = packageJson.scripts[name];
 
                 if (!packageJson.scripts[mirrorName]) {
-                    // Pass the package.json directory as an environment variable, use direct CLI path
+                    // Pass the package.json directory as an environment variable
+                    // Use a dynamic script that finds the extension at runtime
                     const packageDir = path.dirname(this.packageJsonPath);
+                    const findExtensionScript = `node -e "const p=require('path');const f=require('fs');const h=require('os').homedir();const d=[p.join(h,'.vscode/extensions'),p.join(h,'.vscode-server/extensions'),p.join(h,'.cursor/extensions')];for(const x of d){if(f.existsSync(x)){const e=f.readdirSync(x).find(n=>n.startsWith('ivgdesign.devmirror-'));if(e){console.log(p.join(x,e,'out','cli.js'));process.exit(0);}}}process.exit(1);"`;
                     packageJson.scripts[mirrorName] =
-                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"${cliPath}\\"" "${originalScript}"`;
+                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"$(${findExtensionScript})\\"" "${originalScript}"`;
                     modified = true;
                     console.log(`Added mirror script: ${mirrorName}`);
                 }
@@ -49,8 +51,9 @@ export class ScriptModifier {
 
             if (!scriptsToMirror.length) {
                 if (!packageJson.scripts['dev:mirror']) {
+                    const findExtensionScript = `node -e "const p=require('path');const f=require('fs');const h=require('os').homedir();const d=[p.join(h,'.vscode/extensions'),p.join(h,'.vscode-server/extensions'),p.join(h,'.cursor/extensions')];for(const x of d){if(f.existsSync(x)){const e=f.readdirSync(x).find(n=>n.startsWith('ivgdesign.devmirror-'));if(e){console.log(p.join(x,e,'out','cli.js'));process.exit(0);}}}process.exit(1);"`;
                     packageJson.scripts['dev:mirror'] =
-                        `concurrently "node \\"${cliPath}\\"" "echo \\"No dev script found\\""`;
+                        `concurrently "node \\"$(${findExtensionScript})\\"" "echo \\"No dev script found\\""`;
                     modified = true;
                 }
             }

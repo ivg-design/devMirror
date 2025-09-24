@@ -15,7 +15,7 @@
     "devtools protocol",
     "console capture"
   ],
-  "version": "0.4.71",
+  "version": "0.4.78",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -46,11 +46,11 @@
         {
           "type": "webview",
           "id": "devmirror.setupWizard",
-          "name": "Startup Wizard",
-          "icon": "$(wand)",
-          "contextualTitle": "Startup Wizard",
-          "visibility": "collapsed",
-          "when": "devmirror.showWizard && workbenchState != empty"
+          "name": "DevMirror Settings",
+          "icon": "$(gear)",
+          "contextualTitle": "DevMirror Settings",
+          "visibility": "visible",
+          "when": "workbenchState != empty"
         }
       ]
     },
@@ -94,12 +94,22 @@
         "command": "devmirror.undoMirrorScript",
         "title": "Undo Mirror Script",
         "icon": "$(discard)"
+      },
+      {
+        "command": "devmirror.openConfiguration",
+        "title": "DevMirror Config",
+        "icon": "$(gear)"
       }
     ],
     "menus": {
       "view/title": [
         {
           "command": "devmirror.refreshPackages",
+          "when": "view == devmirrorPackages",
+          "group": "navigation"
+        },
+        {
+          "command": "devmirror.openConfiguration",
           "when": "view == devmirrorPackages",
           "group": "navigation"
         }
@@ -154,6 +164,116 @@
           "type": "boolean",
           "default": true,
           "description": "Capture browser deprecation warnings like declarative Shadow DOM messages"
+        },
+        "devmirror.lifecycle.captureNavigation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture all page navigation events (master toggle)"
+        },
+        "devmirror.lifecycle.capturePageNavigated": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture page navigated events"
+        },
+        "devmirror.lifecycle.capturePageLoaded": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture page loaded events"
+        },
+        "devmirror.lifecycle.captureDOMContentLoaded": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture DOM content loaded events"
+        },
+        "devmirror.lifecycle.captureSession": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture all session events (master toggle)"
+        },
+        "devmirror.lifecycle.captureSessionStarted": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture session started events"
+        },
+        "devmirror.lifecycle.captureSessionEnded": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture session ended events"
+        },
+        "devmirror.lifecycle.captureCEFConnected": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture CEF connected events"
+        },
+        "devmirror.lifecycle.captureCEFDisconnected": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture CEF disconnected events"
+        },
+        "devmirror.lifecycle.capturePerformance": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture all performance events (master toggle)"
+        },
+        "devmirror.lifecycle.captureFirstPaint": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture firstPaint performance timing"
+        },
+        "devmirror.lifecycle.captureFirstContentfulPaint": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture firstContentfulPaint performance timing"
+        },
+        "devmirror.lifecycle.captureDialogs": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture all dialog and window events (master toggle)"
+        },
+        "devmirror.lifecycle.captureAlert": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture JavaScript alert dialogs"
+        },
+        "devmirror.lifecycle.captureConfirm": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture JavaScript confirm dialogs"
+        },
+        "devmirror.lifecycle.captureWindowOpened": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture window opened events"
+        },
+        "devmirror.captureJavaScriptErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture JavaScript runtime errors and exceptions"
+        },
+        "devmirror.captureNetworkErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture HTTP errors, failed requests, and network issues"
+        },
+        "devmirror.captureSecurityErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture CORS errors, CSP violations, and security warnings"
+        },
+        "devmirror.captureViteErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture Vite dev server errors and build issues"
+        },
+        "devmirror.captureWebpackErrors": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture Webpack compilation and bundling errors"
+        },
+        "devmirror.captureTypeScriptErrors": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture TypeScript compilation errors and type warnings"
         }
       }
     }

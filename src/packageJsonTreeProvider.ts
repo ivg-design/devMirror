@@ -55,7 +55,12 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
             '**/public/**',
             '**/.output/**',
             '**/.vercel/**',
-            '**/.netlify/**'
+            '**/.netlify/**',
+            '**/vitepress/cache/**',
+            '**/.vitepress/cache/**',
+            '**/**/cache/**',
+            '**/**/deps_temp*/**',
+            '**/*_temp_*/**'
         ].join(',');
 
         const files = await vscode.workspace.findFiles(pattern, `{${excludePatterns}}`);

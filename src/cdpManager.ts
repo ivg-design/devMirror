@@ -294,16 +294,6 @@ export class CDPManager {
 
         });
 
-        this.client.on('Console.messageAdded', (event: any) => {
-            // Handle Console.messageAdded events (legacy but might contain warnings)
-            if (event.message) {
-                this.logWriter.write({
-                    type: 'console',
-                    message: `[CONSOLE-LEGACY] ${event.message.text || event.message.source || 'unknown'}`,
-                    timestamp: Date.now()
-                });
-            }
-        });
 
         this.client.on('Security.securityStateChanged', (event: any) => {
             if (event.securityState === 'insecure') {
@@ -977,15 +967,6 @@ export class CDPManager {
                     timestamp: Date.now()
                 });
 
-            } else if (method === 'Console.messageAdded') {
-                // Handle Console domain messages
-                const msg = params.message;
-                this.logWriter.write({
-                    type: 'console',
-                    method: msg.level || 'log',
-                    message: msg.text || '',
-                    timestamp: Date.now()
-                });
 
             } else if (method === 'Runtime.exceptionThrown') {
                 // Handle exceptions
@@ -1466,17 +1447,6 @@ export class CDPManager {
                 });
                 handlerCount++;
 
-                // Console.messageAdded - legacy console messages
-                this.client.on('Console.messageAdded', (event: any) => {
-                    const msg = event.message;
-                    this.logWriter.write({
-                        type: 'console',
-                        method: msg.level,
-                        message: msg.text,
-                        timestamp: Date.now()
-                    });
-                });
-                handlerCount++;
 
                 console.log(`   ✅ Registered ${handlerCount} event handlers`);
                 console.log('   Event handlers:', Object.keys(this.client._eventHandlers));

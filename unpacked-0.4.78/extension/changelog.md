@@ -2,34 +2,192 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
-## [0.4.71] - 2025-09-24
+## [0.4.78] - 2025-09-24
+
+### Critical Bug Fix
+- **Fixed CLI Configuration Override Logic** - CLI now properly respects JSON configuration
+  - **Root Cause**: CLI was hardcoding `captureNavigation: true` as default override
+  - **Solution**: CLI now only applies command-line overrides when explicitly specified
+  - **Behavior**: JSON configuration settings are no longer overridden by default CLI logic
+  - **Command-line flags**: Only override config when flags like `--no-navigation` are explicitly provided
+
+### Technical Fix
+- Refactored CLI settings override logic to be opt-in rather than always-on
+- Fixed lifecycle settings merging to respect JSON configuration as primary source
+- Updated override application to handle undefined lifecycle overrides gracefully
+
+## [0.4.77] - 2025-09-24
+
+### Critical Fix
+- **Fixed CLI Lifecycle Configuration Filtering** - CLI now properly respects lifecycle settings
+  - **Fixed Page Navigation Events**: Now honors `capturePageNavigated` setting from config
+  - **Fixed Page Loaded Events**: Now honors `capturePageLoaded` setting from config
+  - **Fixed DOM Content Loaded Events**: Now honors `captureDOMContentLoaded` setting from config
+  - **Proper Granular Control**: Granular settings take precedence over master toggles
+  - **CLI Configuration Reading**: Enhanced DevMirrorConfig interface with all granular settings
+
+### Technical Improvements
+- Updated PageEventHandler to check granular lifecycle settings before master toggles
+- Enhanced configuration interface to include all granular lifecycle controls
+- Fixed logic: `granularSetting ?? masterToggle ?? defaultValue` priority chain
+
+## [0.4.76] - 2025-09-24
+
+### UI/UX Improvements
+- **Tri-State Master Checkboxes** - Master checkboxes now properly show indeterminate state
+  - Empty: No sub-items are selected
+  - Checked: All sub-items are selected
+  - Indeterminate: Some sub-items are selected
+  - Clicking master toggles all sub-items on/off
+- **Improved Panel Naming and Navigation**
+  - Panel renamed from "Setup Wizard" to "DevMirror Settings" (now always visible)
+  - Configuration view is now "DevMirror Config"
+  - Setup wizard is now "Startup Wizard"
+  - Settings panel opens to DevMirror Config by default (not wizard)
+  - Clear navigation between Config and Startup Wizard views
+
+### Technical
+- Fixed default webview to show configuration panel instead of wizard
+- Enhanced master checkbox logic with proper state management
+- Updated all UI labels and titles for consistency
+
+## [0.4.75] - 2025-09-24
+
+### Critical Fixes
+- **Configuration Panel Now Fully Functional** - Fixed all non-functional issues from v0.4.74
+  - **Fixed Lifecycle Settings**: Now properly saved to both VS Code settings AND devmirror.config.json
+  - **Fixed Config JSON Reflection**: UI selections now correctly written to configuration file
+  - **Fixed Extension Settings Sync**: Settings toggled in panel are recorded to extension settings
+  - **Fixed Template Literal Syntax**: Resolved TypeScript compilation errors from nested backticks
+
+### Technical Improvements
+- **Dual Configuration Storage**: Settings saved to both locations for CLI compatibility
+  - VS Code extension settings (for extension-level functionality)
+  - devmirror.config.json (for CLI filtering to actually work)
+- **Backwards Compatible Loading**: Reads from both nested lifecycle object and flat structure
+- **Proper Template Escaping**: Fixed JavaScript template literals in HTML templates
+
+### Verified Functionality
+- ✅ Unchecking navigation events actually prevents their capture
+- ✅ Granular lifecycle controls work as expected
+- ✅ Error capture settings properly filter output
+- ✅ Configuration persists between sessions
+- ✅ TypeScript compilation succeeds without errors
+
+## [0.4.74] - 2025-09-24
+
+### Major Enhancement
+- **Comprehensive Configuration Panel** - Complete control over ALL DevMirror settings
+  - **Core Settings**: Target URL, Output Directory, Chrome Path, Target Mode, CEF Port, Auto-detect Port
+  - **Performance & Throttling**: Max Logs Per Second, Suppress After Count (throttle controls)
+  - **All Lifecycle Events**: Granular control with master toggles and individual selections
+  - **Error Capture**: Deprecation Warnings, Vite Errors
+  - **File Handling**: Auto Refresh, Auto Fold
+  - No more emojis in configuration interface (cleaner, professional appearance)
+
+### Enhanced
+- **Safe Configuration Merging** - Preserves unknown settings in devmirror.config.json
+  - Reads existing config file completely before making changes
+  - Updates only UI-managed settings, preserves all other settings
+  - Prevents loss of custom settings like waitMode, companion, preserveLogger
+  - Intelligent merge process protects against configuration corruption
+
+- **Improved Panel State Management** - Fixed cancel button reliability
+  - Cancel button now works consistently from any view state
+  - Proper state restoration when switching between wizard and config views
+  - Fixed script data persistence across view changes
 
 ### Fixed
-- **CRITICAL**: Fixed hardcoded extension path - scripts now dynamically find extension at runtime
-- **CRITICAL**: Removed duplicate Console.messageAdded handlers eliminating CONSOLE-LEGACY duplicates
-- Enhanced vitepress cache exclusion patterns to prevent cache directories from showing
+- **Root Package Display** - Shows "projectname.root" instead of generic "."
+  - Reads project name from package.json and displays as "projectname.root"
+  - Falls back to "project.root" if name cannot be determined
+  - Much clearer identification in DevMirror Scripts panel
+
+- **Configuration Validation** - All settings properly saved to config files
+  - Verified all UI settings map correctly to devmirror.config.json
+  - VS Code workspace settings properly updated for lifecycle controls
+  - Comprehensive loading ensures UI reflects actual configuration state
+
+## [0.4.73] - 2025-09-24
+
+### Enhanced
+- **Granular Lifecycle Event Controls** - Fine-grained control over individual lifecycle events
+  - Expandable sections for each lifecycle category with master toggles
+  - Individual controls for Page Navigation: Page Navigated, Page Loaded, DOM Content Loaded
+  - Individual controls for Session Events: Session Started/Ended, CEF Connected/Disconnected
+  - Individual controls for Performance: First Paint, First Contentful Paint
+  - Individual controls for Dialogs: JavaScript Alerts, Confirms, Window Opened
+  - Master checkboxes automatically toggle all sub-items in their category
+  - New VS Code settings for each individual lifecycle event type
+
+- **Configuration UI Improvements** - Better user experience and functionality
+  - Changed wizard icon from gear to magic wand ($(wand)) for better distinction
+  - Added proper "Apply Settings" and "Cancel" buttons instead of "Switch to Wizard"
+  - Fixed cancel button functionality to properly close panel from any state
+  - Both Apply and Cancel buttons now close the configuration panel after action
+
+### Fixed
+- **Cache Files Exclusion** - Enhanced exclusion patterns
+  - Added comprehensive VitePress cache exclusion patterns
+  - Now excludes `**/.vitepress/cache/**`, `**/.vitepress/dist/**`, and `**/deps_temp_*/**`
+  - No more cache files appearing in DevMirror Scripts panel
+
+- **Panel State Management** - Improved reliability
+  - Fixed panel closing functionality when switching between wizard and config views
+  - Proper cleanup of stored data when closing panels
+  - Consistent behavior regardless of entry point (gear icon vs wizard icon)
+
+## [0.4.72] - 2025-09-24
+
+### Added
+- **Configuration WebView UI** - New graphical configuration interface
+  - Added comprehensive configuration panel with organized sections
+  - Checkbox-based controls for all logging options (lifecycle events, error capture, file handling)
+  - Real-time synchronization with VS Code settings and devmirror.config.json
+  - Switch between Setup Wizard and Configuration views
+  - Intuitive organization: Lifecycle Events, Error Capture, File Handling, Browser Settings
+
+- **DevMirror Scripts Panel Enhancement** - Added gear icon for quick config access
+  - New gear icon in DevMirror Scripts panel toolbar
+  - Direct access to configuration UI from scripts panel
+  - `devmirror.openConfiguration` command for programmatic access
+
+### Enhanced
+- **Unified Configuration Management** - Better integration between settings sources
+  - Automatic loading of current configuration from both VS Code settings and config file
+  - Intelligent merging of configuration sources with proper precedence
+  - Real-time updates to VS Code workspace settings
+  - Preserves existing devmirror.config.json structure while updating settings
+
+## [0.4.71] - 2025-09-24
+
+### Enhanced
+- **Improved Vite Error Detection** - Enhanced server-side error capture
+  - Enhanced network response analysis to capture HTTP 500 errors from Vite dev server
+  - Added response body analysis for better error message extraction
+  - Improved detection of Vite import resolution errors and module loading failures
+  - Better formatting of Vite errors with `[vite]` prefix matching terminal output
+  - Enhanced URL pattern matching for Vite development server requests
+
+### Fixed
+- More comprehensive Vite error detection for server-side compilation errors
+- Better error message extraction from Vite dev server HTTP responses
 
 ## [0.4.70] - 2025-09-24
 
-### Fixed
-- Browser now opens to correct target URL instead of docs page in CEF mode
-- Enhanced package.json cache detection with more comprehensive exclusion patterns
+### Added
+- **Lifecycle Event Configuration** - Granular control over lifecycle logging
+  - `devmirror.lifecycle.captureNavigation` - Control page navigation events (default: true)
+  - `devmirror.lifecycle.captureSession` - Control session and connection events (default: true)
+  - `devmirror.lifecycle.capturePerformance` - Control performance timing events (default: false)
+  - `devmirror.lifecycle.captureDialogs` - Control JavaScript dialogs and window events (default: false)
+  - Settings are automatically passed from VS Code to CLI via command line arguments
 
-### Changed
-- Renamed "Setup Wizard" to "Startup Wizard" with magic wand icon
-- Root package.json now displays as "projectName.root" instead of "."
-
-### Reverted
-- Removed experimental lifecycle event configuration (from 0.4.69)
-- Removed Vite-specific error capture features (from 0.4.69)
-- Simplified back to basic, reliable event capture
-
-## [0.4.69] - 2025-09-24 [REVERTED]
-
-### Reverted
-- Removed experimental lifecycle event configuration that was causing issues
-- Removed Vite-specific error capture features that added complexity
-- Simplified back to basic, reliable event capture
+- **Vite Error Capture** - Advanced error detection for Vite development
+  - `devmirror.captureViteErrors` - Capture Vite-specific build and runtime errors (default: true)
+  - Detects module loading failures, build errors, and syntax errors from Vite
+  - Distinctive `🔥 VITE` labeling for Vite-related errors in logs
+  - Monitors console, network, and log domains for Vite error patterns
 
 ### Fixed
 - **Browser Deprecation Warning Capture** - Fixed missing browser-generated warnings
