@@ -13,6 +13,10 @@ on:
 jobs:
   publish-npm:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      deployments: write
 
     steps:
     - name: Checkout code
