@@ -124,8 +124,7 @@ jobs:
     - name: Verify NPM authentication
       run: |
         npm whoami
-        echo "Checking package permissions..."
-        npm access ls-packages --json || echo "Access check failed"
+        echo "✅ NPM authentication successful"
       env:
         NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
