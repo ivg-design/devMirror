@@ -169,14 +169,6 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 packageJson.scripts = {};
             }
 
-            // Get CLI path from global state (set in extension activation)
-            const cliPath = this.context.globalState.get<string>('devmirror.cliPath');
-
-            if (!cliPath) {
-                vscode.window.showErrorMessage('DevMirror CLI path not found. Please restart VS Code.');
-                return;
-            }
-
             const scriptName = item.label as string;
             const mirrorName = `${scriptName}:mirror`;
             const originalCommand = item.description as string;
@@ -201,8 +193,25 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 return;
             }
 
-            // Pass the package.json directory as an environment variable, use direct CLI path
-            packageJson.scripts[mirrorName] = `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"${cliPath}\\"" "${originalCommand}"`;
+            // Check if package uses ESM
+            const isESM = packageJson.type === 'module';
+
+            // Use the stable shim path - relative from each package.json location
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || packageDir;
+            const shimExtension = isESM ? '.cjs' : '.js';
+            const shimPath = path.join(workspaceRoot, '.vscode', 'devmirror', `cli${shimExtension}`);
+
+            // Calculate relative path from package.json to shim
+            let relativeShimPath = path.relative(packageDir, shimPath);
+            // Ensure forward slashes for cross-platform compatibility
+            relativeShimPath = relativeShimPath.replace(/\\/g, '/');
+            // Add ./ prefix if not going up directories
+            if (!relativeShimPath.startsWith('../')) {
+                relativeShimPath = './' + relativeShimPath;
+            }
+
+            // Pass the package.json directory as an environment variable, use shim path
+            packageJson.scripts[mirrorName] = `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"${relativeShimPath}\\"" "${originalCommand}"`;
 
             await fs.writeFile(item.resourcePath, JSON.stringify(packageJson, null, 2), 'utf8');
 
