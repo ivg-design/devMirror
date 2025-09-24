@@ -2,7 +2,7 @@
 
 This file is automatically updated with the latest NPM package information.
 
-**Latest Version:** 0.4.66
+**Latest Version:** 0.4.67
 **Package URL:** https://www.npmjs.com/package/devmirror
 **Downloads:** ![NPM Downloads](https://img.shields.io/npm/dm/devmirror)
 
@@ -47,4 +47,4 @@ Create a `devmirror.config.json` in your project root:
 ```
 
 ---
-*Last updated: Wed Sep 24 10:55:38 UTC 2025*
+*Last updated: Wed Sep 24 12:01:39 UTC 2025*
