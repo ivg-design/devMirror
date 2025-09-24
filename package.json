@@ -33,7 +33,7 @@
     "workspaceContains:devmirror.config.json",
     "workspaceContains:**/devmirror-logs/**"
   ],
-  "main": "./dist/extension.js",
+  "main": "./out/extension.js",
   "contributes": {
     "views": {
       "explorer": [
