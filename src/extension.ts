@@ -11,9 +11,34 @@ import { WizardViewProvider } from './wizardViewProvider';
 import { BackupManager } from './backupManager';
 
 export function activate(context: vscode.ExtensionContext) {
-    // Store CLI path using context.extensionUri on activation
+    // Store CLI path in persistent storage on every activation
     const cliUri = vscode.Uri.joinPath(context.extensionUri, 'out', 'cli.js');
     context.globalState.update('devmirror.cliPath', cliUri.fsPath);
+
+    // Update CLI path in devmirror.config.json files when extension activates
+    const fs = require('fs');
+    const path = require('path');
+
+    // Function to update CLI path in all workspace devmirror.config.json files
+    const updateCliPathInConfigs = async () => {
+        if (vscode.workspace.workspaceFolders) {
+            for (const folder of vscode.workspace.workspaceFolders) {
+                const configPath = path.join(folder.uri.fsPath, 'devmirror.config.json');
+                if (fs.existsSync(configPath)) {
+                    try {
+                        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+                        config.cliPath = cliUri.fsPath;
+                        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+                        console.log(`Updated CLI path in ${configPath}`);
+                    } catch (e) {
+                        console.error(`Failed to update ${configPath}:`, e);
+                    }
+                }
+            }
+        }
+    };
+
+    updateCliPathInConfigs();
 
     const outputChannel = vscode.window.createOutputChannel('DevMirror');
     const statusMonitor = new StatusMonitor();

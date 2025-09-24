@@ -39,11 +39,11 @@ export class ScriptModifier {
 
                 if (!packageJson.scripts[mirrorName]) {
                     // Pass the package.json directory as an environment variable
-                    // Use a dynamic script that finds the extension at runtime
+                    // Read CLI path from devmirror.config.json at runtime
                     const packageDir = path.dirname(this.packageJsonPath);
-                    const findExtensionScript = `node -e "const p=require('path');const f=require('fs');const h=require('os').homedir();const d=[p.join(h,'.vscode/extensions'),p.join(h,'.vscode-server/extensions'),p.join(h,'.cursor/extensions')];for(const x of d){if(f.existsSync(x)){const e=f.readdirSync(x).find(n=>n.startsWith('ivgdesign.devmirror-'));if(e){console.log(p.join(x,e,'out','cli.js'));process.exit(0);}}}process.exit(1);"`;
+                    const readCliPathScript = `node -e "const fs=require('fs');const path=require('path');try{const config=JSON.parse(fs.readFileSync(path.join('${packageDir}','devmirror.config.json'),'utf8'));console.log(config.cliPath||'');}catch(e){console.error('DevMirror CLI path not found');process.exit(1);}"`;
                     packageJson.scripts[mirrorName] =
-                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"$(${findExtensionScript})\\"" "${originalScript}"`;
+                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"$(${readCliPathScript})\\"" "${originalScript}"`;
                     modified = true;
                     console.log(`Added mirror script: ${mirrorName}`);
                 }
@@ -51,9 +51,10 @@ export class ScriptModifier {
 
             if (!scriptsToMirror.length) {
                 if (!packageJson.scripts['dev:mirror']) {
-                    const findExtensionScript = `node -e "const p=require('path');const f=require('fs');const h=require('os').homedir();const d=[p.join(h,'.vscode/extensions'),p.join(h,'.vscode-server/extensions'),p.join(h,'.cursor/extensions')];for(const x of d){if(f.existsSync(x)){const e=f.readdirSync(x).find(n=>n.startsWith('ivgdesign.devmirror-'));if(e){console.log(p.join(x,e,'out','cli.js'));process.exit(0);}}}process.exit(1);"`;
+                    const packageDir = path.dirname(this.packageJsonPath);
+                    const readCliPathScript = `node -e "const fs=require('fs');const path=require('path');try{const config=JSON.parse(fs.readFileSync(path.join('${packageDir}','devmirror.config.json'),'utf8'));console.log(config.cliPath||'');}catch(e){console.error('DevMirror CLI path not found');process.exit(1);}"`;
                     packageJson.scripts['dev:mirror'] =
-                        `concurrently "node \\"$(${findExtensionScript})\\"" "echo \\"No dev script found\\""`;
+                        `concurrently "node \\"$(${readCliPathScript})\\"" "echo \\"No dev script found\\""`;
                     modified = true;
                 }
             }

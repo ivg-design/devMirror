@@ -2,6 +2,13 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.72] - 2025-09-24
+
+### Fixed
+- **Dynamic CLI Path Resolution**: Extension now updates `cliPath` in devmirror.config.json on every activation
+- Scripts read CLI path from config at runtime, surviving extension updates
+- No more hardcoded paths breaking after extension updates
+
 ## [0.4.71] - 2025-09-24
 
 ### Fixed
