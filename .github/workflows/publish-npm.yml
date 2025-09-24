@@ -121,20 +121,20 @@ jobs:
         }
         EOF
 
-    - name: Configure NPM authentication
-      run: |
-        echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
-
     - name: Verify NPM authentication
       run: |
         npm whoami
         echo "Checking package permissions..."
         npm access ls-packages --json || echo "Access check failed"
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     - name: Publish to NPM
       run: |
         cd npm-package
         npm publish --access public
+      env:
+        NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
     - name: Update repository with NPM package info
       run: |
