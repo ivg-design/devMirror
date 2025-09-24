@@ -1,6 +1,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import { createWriteStream, WriteStream } from 'fs';
+import { DevMirrorConfig } from './configHandler';
 
 export interface LogEntry {
     type: 'console' | 'error' | 'network' | 'browser' | 'lifecycle' | 'suppressed' | 'debug';
@@ -19,8 +20,11 @@ export class LogWriter {
     private currentLogPath: string = '';
     private logSize: number = 0;
     private readonly MAX_LOG_SIZE = 50 * 1024 * 1024; // 50MB
+    private config?: DevMirrorConfig;
 
-    constructor(private outputDir: string) {}
+    constructor(private outputDir: string, config?: DevMirrorConfig) {
+        this.config = config;
+    }
 
     async initialize(): Promise<void> {
         try {
@@ -75,6 +79,7 @@ export class LogWriter {
             return;
         }
 
+
         const formattedEntry = this.formatEntry(entry);
         const entrySize = Buffer.byteLength(formattedEntry);
 
@@ -103,8 +108,14 @@ export class LogWriter {
 
         let typeLabel = entry.type.toUpperCase();
         if (entry.type === 'console' && entry.method) {
-            // Drop the CONSOLE: prefix, just use the method
+            // User console calls - use the method name (log, warn, error, etc.)
             typeLabel = entry.method.toUpperCase();
+        } else if (entry.type === 'console' && entry.source) {
+            // Browser-generated console messages - show source
+            typeLabel = `[${entry.source.toUpperCase()}]`;
+        } else if (entry.type === 'error' && entry.source === 'vite') {
+            // Vite-specific errors - distinctive formatting
+            typeLabel = '🔥 VITE';
         } else if (entry.type === 'network') {
             typeLabel = 'NETWORK:ERROR';
         } else if (entry.type === 'browser' && entry.level) {
@@ -135,9 +146,7 @@ export class LogWriter {
             message += `\n    URL: ${entry.url}`;
         }
 
-        if (entry.source) {
-            message += `\n    Source: ${entry.source}`;
-        }
+        // Source is now included in typeLabel, no need to duplicate it
 
         if (entry.stack) {
             const stackTrace = this.formatStackTrace(entry.stack);

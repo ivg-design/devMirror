@@ -15,7 +15,7 @@
     "devtools protocol",
     "console capture"
   ],
-  "version": "0.4.67",
+  "version": "0.4.75",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -26,12 +26,11 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:devmirror.setup",
-    "onCommand:devmirror.start",
-    "onCommand:devmirror.stop",
-    "onCommand:devmirror.showLogs",
-    "workspaceContains:devmirror.config.json",
-    "workspaceContains:**/devmirror-logs/**"
+    "devmirror.setup",
+    "devmirror.start",
+    "devmirror.stop",
+    "devmirror.showLogs",
+    "workspaceContains:devmirror.config.json"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -47,9 +46,9 @@
         {
           "type": "webview",
           "id": "devmirror.setupWizard",
-          "name": "Setup Wizard",
-          "icon": "$(gear)",
-          "contextualTitle": "Setup Wizard",
+          "name": "Startup Wizard",
+          "icon": "$(wand)",
+          "contextualTitle": "Startup Wizard",
           "visibility": "collapsed",
           "when": "devmirror.showWizard && workbenchState != empty"
         }
@@ -88,8 +87,8 @@
       },
       {
         "command": "devmirror.openSetupWizard",
-        "title": "Setup Wizard",
-        "icon": "$(gear)"
+        "title": "Startup Wizard",
+        "icon": "$(wand)"
       },
       {
         "command": "devmirror.undoMirrorScript",
@@ -160,10 +159,10 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "webpack --mode production --devtool hidden-source-map",
+    "package": "npm run compile",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run lint",

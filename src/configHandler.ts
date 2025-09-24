@@ -25,7 +25,7 @@ export class ConfigHandler {
         // For CEF mode, uncomment and set your debug port:
         // mode: 'cef',
         // cefPort: 8860,  // Your CEF debug port from .debug file
-        captureDeprecationWarnings: true,  // Enable to capture Shadow DOM and other deprecation warnings
+        captureDeprecationWarnings: true,
         throttle: {
             maxPerSecond: 100,
             suppressAfter: 100
@@ -98,5 +98,15 @@ export class ConfigHandler {
         const rootPath = path.dirname(configPath);
         const handler = new ConfigHandler(rootPath);
         return handler.load();
+    }
+
+    /**
+     * Merge VS Code settings with config file settings
+     */
+    static mergeWithVSCodeSettings(config: DevMirrorConfig, vscodeConfig: any): DevMirrorConfig {
+        return {
+            ...config,
+            captureDeprecationWarnings: vscodeConfig.get('devmirror.captureDeprecationWarnings', config.captureDeprecationWarnings)
+        };
     }
 }

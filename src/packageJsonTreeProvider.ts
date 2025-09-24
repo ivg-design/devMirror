@@ -16,9 +16,11 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
 
     private packageJsonFiles: string[] = [];
     private workspaceRoot: string;
+    private context: vscode.ExtensionContext;
 
-    constructor(workspaceRoot: string) {
+    constructor(workspaceRoot: string, context: vscode.ExtensionContext) {
         this.workspaceRoot = workspaceRoot;
+        this.context = context;
     }
 
     refresh(): void {
@@ -27,7 +29,41 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
 
     async findPackageJsonFiles(): Promise<void> {
         const pattern = new vscode.RelativePattern(this.workspaceRoot, '**/package.json');
-        const files = await vscode.workspace.findFiles(pattern, '**/node_modules/**');
+        // Exclude common cache directories and build outputs that might contain package.json files
+        const excludePatterns = [
+            '**/node_modules/**',
+            '**/.cache/**',
+            '**/.vite/**',
+            '**/.vite-cache/**',
+            '**/.parcel-cache/**',
+            '**/.next/**',
+            '**/.nuxt/**',
+            '**/dist/**',
+            '**/build/**',
+            '**/out/**',
+            '**/.git/**',
+            '**/.svn/**',
+            '**/.hg/**',
+            '**/temp/**',
+            '**/tmp/**',
+            '**/.temp/**',
+            '**/.tmp/**',
+            '**/coverage/**',
+            '**/.turbo/**',
+            '**/.webpack/**',
+            '**/.rollup.cache/**',
+            '**/public/**',
+            '**/.output/**',
+            '**/.vercel/**',
+            '**/.netlify/**',
+            '**/vitepress/cache/**',
+            '**/.vitepress/cache/**',
+            '**/**/cache/**',
+            '**/**/deps_temp*/**',
+            '**/*_temp_*/**'
+        ].join(',');
+
+        const files = await vscode.workspace.findFiles(pattern, `{${excludePatterns}}`);
         this.packageJsonFiles = files.map(uri => uri.fsPath);
     }
 
@@ -46,7 +82,14 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
             await this.findPackageJsonFiles();
             return this.packageJsonFiles.map(filePath => {
                 const relativePath = path.relative(this.workspaceRoot, filePath);
-                const dirName = path.dirname(relativePath) || '.';
+                let dirName = path.dirname(relativePath) || '.';
+
+                // If it's the root package.json, show it as 'projectName.root'
+                if (dirName === '.') {
+                    const projectName = path.basename(this.workspaceRoot);
+                    dirName = `${projectName}.root`;
+                }
+
                 return new PackageJsonItem(
                     dirName,
                     filePath,
@@ -126,21 +169,9 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 packageJson.scripts = {};
             }
 
-            // Get extension path
-            const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
-                                  vscode.extensions.getExtension('devmirror')?.extensionPath;
-
-            if (!extensionPath) {
-                vscode.window.showErrorMessage('DevMirror extension not found');
-                return;
-            }
-
             const scriptName = item.label as string;
             const mirrorName = `${scriptName}:mirror`;
             const originalCommand = item.description as string;
-
-            // Install wrapper to ensure npx devmirror-cli works
-            await this.installWrapper(packageDir);
 
             // Check if concurrently is available
             const hasLocalConcurrently = await this.checkForDependency(item.resourcePath, 'concurrently');
@@ -162,8 +193,25 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 return;
             }
 
-            // Pass the package.json directory as an environment variable
-            packageJson.scripts[mirrorName] = `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "npx devmirror-cli" "${originalCommand}"`;
+            // Check if package uses ESM
+            const isESM = packageJson.type === 'module';
+
+            // Use the stable shim path - relative from each package.json location
+            const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || packageDir;
+            const shimExtension = isESM ? '.cjs' : '.js';
+            const shimPath = path.join(workspaceRoot, '.vscode', 'devmirror', `cli${shimExtension}`);
+
+            // Calculate relative path from package.json to shim
+            let relativeShimPath = path.relative(packageDir, shimPath);
+            // Ensure forward slashes for cross-platform compatibility
+            relativeShimPath = relativeShimPath.replace(/\\/g, '/');
+            // Add ./ prefix if not going up directories
+            if (!relativeShimPath.startsWith('../')) {
+                relativeShimPath = './' + relativeShimPath;
+            }
+
+            // Pass the package.json directory as an environment variable, use shim path
+            packageJson.scripts[mirrorName] = `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"${relativeShimPath}\\"" "${originalCommand}"`;
 
             await fs.writeFile(item.resourcePath, JSON.stringify(packageJson, null, 2), 'utf8');
 
@@ -188,30 +236,6 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
         }
     }
 
-    private async installWrapper(packageDir: string): Promise<void> {
-        // Check if wrapper exists in project
-        const wrapperDest = path.join(packageDir, 'node_modules', '.bin', 'devmirror-cli');
-
-        try {
-            await fs.access(wrapperDest);
-        } catch {
-            // Wrapper doesn't exist, copy it from extension
-            const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
-                                  vscode.extensions.getExtension('devmirror')?.extensionPath;
-
-            if (extensionPath) {
-                const wrapperSrc = path.join(extensionPath, 'out', 'devmirror-cli-wrapper.js');
-                const binDir = path.join(packageDir, 'node_modules', '.bin');
-
-                // Ensure .bin directory exists
-                await fs.mkdir(binDir, { recursive: true });
-
-                // Copy the wrapper
-                const content = await fs.readFile(wrapperSrc, 'utf8');
-                await fs.writeFile(wrapperDest, content, { mode: 0o755 });
-            }
-        }
-    }
 
     private async ensureDevMirrorConfig(packageDir: string): Promise<void> {
         const configPath = path.join(packageDir, 'devmirror.config.json');

@@ -1,27 +1,15 @@
-# Source and development files
 .vscode/**
 .vscode-test/**
 src/**
-.git/**
-.github/**
-*.vsix
-.DS_Store
-
-# Exclude compiled TypeScript but keep webpack bundle
-out/**/*.js
-out/**/*.map
-!out/extension.js
-!out/extension.js.map
-
-# Development files
-webpack.config.js
-tsconfig.json
-.eslintrc.json
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
-
-# Extra project files
+**/tsconfig.json
+**/.eslintrc.json
+**/*.map
+**/*.ts
+.git/**
+.github/**
 devMirror/**
 devMirror-*/**
 docs/**
@@ -29,42 +17,12 @@ wiki/**
 create-extension.sh
 TEST-PLAN-*.md
 .gitmodules
-
-# ULTRA-AGGRESSIVE node_modules exclusion - minimal runtime only
-node_modules/**
-
-# Puppeteer-core - minimal connect() functionality
-!node_modules/puppeteer-core/package.json
-!node_modules/puppeteer-core/lib/cjs/puppeteer/puppeteer-core.js
-!node_modules/puppeteer-core/lib/cjs/puppeteer/common/BrowserConnector.js
-!node_modules/puppeteer-core/lib/cjs/puppeteer/common/Connection.js
-!node_modules/puppeteer-core/lib/cjs/puppeteer/common/Browser.js
-!node_modules/puppeteer-core/lib/cjs/puppeteer/common/*.js
-
-# WS - entry point only
-!node_modules/ws/package.json
-!node_modules/ws/index.js
-!node_modules/ws/lib/websocket.js
-
-# Open - entry point only
-!node_modules/open/package.json
-!node_modules/open/index.js
-
-# But exclude ALL documentation, tests, examples from ANY included package
 node_modules/**/test/**
 node_modules/**/tests/**
-node_modules/**/example/**
-node_modules/**/examples/**
-node_modules/**/benchmark/**
-node_modules/**/doc/**
-node_modules/**/docs/**
-node_modules/**/*.md
-node_modules/**/README*
-node_modules/**/LICENSE*
-node_modules/**/CHANGELOG*
-node_modules/**/HISTORY*
-node_modules/**/.github/
-node_modules/**/coverage/
-node_modules/**/.nyc_output/
-node_modules/**/bin/
-node_modules/**/.bin/
+*.vsix
+.DS_Store
+dist/**
+webpack.config.js
+unpacked-*/**
+.versions/**
+devmirror-logs/**

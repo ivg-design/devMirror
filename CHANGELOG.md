@@ -2,6 +2,127 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.75] - 2025-09-24
+
+### Fixed
+- **Scripts Panel**: Fixed (+) button to use shim path instead of hardcoded CLI path
+- Package.json scripts created via panel now use relative path to shim
+- Properly detects ESM packages and uses .cjs extension when needed
+- Ensures scripts work correctly in both single-repo and monorepo setups
+
+## [0.4.74] - 2025-09-24
+
+### Added
+- **ESM-Aware Shim Generation**: Automatically detects package.json type:module
+- Creates .cjs shims for ESM projects, .js for CommonJS projects
+- Cleans up old shims with wrong extensions on activation
+
+### Fixed
+- Monorepo support with proper relative path calculations
+- Scripts continue working after extension updates
+
+## [0.4.73] - 2025-09-24
+
+### Added
+- **Shim-Based CLI Resolution**: Implemented stable shim pattern for dynamic paths
+- Creates .vscode/devmirror/cli.js shim and config.json in each workspace
+- Shim reads current extension path from config at runtime
+
+### Fixed
+- Extension size reduced from 41MB to ~150KB (removed unpacked directories)
+- README updated to remove NPM package references
+
+## [0.4.72] - 2025-09-24
+
+### Fixed
+- **Dynamic CLI Path Resolution**: Extension now updates `cliPath` in devmirror.config.json on every activation
+- Scripts read CLI path from config at runtime, surviving extension updates
+- No more hardcoded paths breaking after extension updates
+
+## [0.4.71] - 2025-09-24
+
+### Fixed
+- **CRITICAL**: Fixed hardcoded extension path - scripts now dynamically find extension at runtime
+- **CRITICAL**: Removed duplicate Console.messageAdded handlers eliminating CONSOLE-LEGACY duplicates
+- Enhanced vitepress cache exclusion patterns to prevent cache directories from showing
+
+## [0.4.70] - 2025-09-24
+
+### Fixed
+- Browser now opens to correct target URL instead of docs page in CEF mode
+- Enhanced package.json cache detection with more comprehensive exclusion patterns
+
+### Changed
+- Renamed "Setup Wizard" to "Startup Wizard" with magic wand icon
+- Root package.json now displays as "projectName.root" instead of "."
+
+### Reverted
+- Removed experimental lifecycle event configuration (from 0.4.69)
+- Removed Vite-specific error capture features (from 0.4.69)
+- Simplified back to basic, reliable event capture
+
+## [0.4.69] - 2025-09-24 [REVERTED]
+
+### Reverted
+- Removed experimental lifecycle event configuration that was causing issues
+- Removed Vite-specific error capture features that added complexity
+- Simplified back to basic, reliable event capture
+
+### Fixed
+- **Browser Deprecation Warning Capture** - Fixed missing browser-generated warnings
+  - Fixed stack trace display in log files (were embedded in messages, now properly formatted)
+  - Eliminated duplicate console entries ("CONSOLE-LEGACY" issue)
+  - Browser warnings now properly labeled with source (e.g., `[OTHER]`, `[DEPRECATION]`)
+  - Separated user console calls from browser-generated log messages in output
+
+- **DevMirror Scripts Panel** - Fixed cache file detection issue
+  - Excluded common cache directories (.cache, .vite, .parcel-cache, .next, .nuxt, dist, build, etc.)
+  - Scripts panel now only shows legitimate package.json files, not cached artifacts
+
+- **Activation System Simplification** - Removed redundant file-based activation
+  - Eliminated `.devmirror-activation.json` file creation and watching
+  - Now uses HTTP-only activation (port 37240) for cleaner, more reliable IPC
+  - Reduced complexity and potential file system conflicts
+
+### Changed
+- **Log Output Format** - Improved console message categorization
+  - User console calls: `[LOG]`, `[WARN]`, `[ERROR]` etc.
+  - Browser messages: `[OTHER]`, `[DEPRECATION]`, `[SECURITY]` etc.
+  - Vite errors: `🔥 VITE` with descriptive error details
+  - Stack traces now appear as properly indented blocks instead of inline text
+  - Removed duplicate source information in log entries
+
+### Technical
+- Enhanced configuration system to merge VS Code settings with config files
+- Added `ViteErrorHandler` for intelligent Vite error pattern detection
+- Fixed `ConsoleEventHandler` to pass stack traces separately to `LogWriter`
+- Updated `LogWriter` to handle both `method` (user console) and `source` (browser) fields
+- Resolved `Runtime.consoleAPICalled` vs `Log.entryAdded` event handling conflicts
+- Improved `PackageJsonTreeProvider` file filtering logic for better accuracy
+
+## [0.4.68] - 2025-09-24
+
+### Changed
+- **CLI Path Resolution Architecture** - Complete overhaul using `context.extensionUri`
+  - Replaced fragile extension path lookups with modern VS Code URI API
+  - CLI path now always points to currently running extension (eliminates version conflicts)
+  - Removed entire NPM wrapper system - scripts now use direct CLI path
+  - Zero-conflict path resolution: no more 0.4.66 vs 0.4.67 path mismatches
+  - Future-proof: works in VS Code Web, remote, and local environments
+
+### Removed
+- **NPM Wrapper Dependencies** - Eliminated complex wrapper architecture
+  - Removed `devmirror-cli-wrapper.js` generation and copying
+  - Removed `npx devmirror-cli` dependency in generated scripts
+  - Scripts now use `node "{direct-cli-path}"` for maximum reliability
+  - Simplified codebase with 90% reduction in path resolution complexity
+
+### Technical
+- Updated all extension components to use `context.globalState` for CLI path storage
+- Modified `DevMirrorLauncher`, `PackageJsonTreeProvider`, and `ScriptModifier` to use stored paths
+- Enhanced extension activation to store CLI path immediately on startup
+- Cross-platform URI handling ensures consistent behavior across all environments
+
 ## [0.4.67] - 2025-09-24
 
 ### Added
