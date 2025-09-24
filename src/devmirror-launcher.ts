@@ -33,26 +33,9 @@ export class DevMirrorLauncher {
         const config = vscode.workspace.getConfiguration();
         const args = [cliPath];
 
-        // Pass lifecycle settings
-        if (!config.get('devmirror.lifecycle.captureNavigation', true)) {
-            args.push('--no-navigation');
-        }
-        if (!config.get('devmirror.lifecycle.captureSession', true)) {
-            args.push('--no-session');
-        }
-        if (config.get('devmirror.lifecycle.capturePerformance', false)) {
-            args.push('--with-performance');
-        }
-        if (config.get('devmirror.lifecycle.captureDialogs', false)) {
-            args.push('--with-dialogs');
-        }
-
-        // Pass other settings
+        // Pass settings
         if (!config.get('devmirror.captureDeprecationWarnings', true)) {
             args.push('--no-deprecation-warnings');
-        }
-        if (config.get('devmirror.captureViteErrors', true)) {
-            args.push('--with-vite-errors');
         }
 
         this.outputChannel.show();

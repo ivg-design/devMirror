@@ -10,13 +10,6 @@ export interface DevMirrorConfig {
     autoDetectPort?: boolean;  // Auto-detect running dev server
     autoOpenBrowser?: boolean;  // Auto-open browser in CEF mode
     captureDeprecationWarnings?: boolean;  // Capture browser deprecation warnings (Shadow DOM, etc.)
-    lifecycle?: {
-        captureNavigation?: boolean;  // Page navigation events
-        captureSession?: boolean;     // Session start/end, connections
-        capturePerformance?: boolean; // Performance timing events
-        captureDialogs?: boolean;     // JavaScript dialogs and window events
-    };
-    captureViteErrors?: boolean;  // Capture Vite dev server errors
     throttle?: {
         maxPerSecond: number;
         suppressAfter: number;
@@ -32,14 +25,7 @@ export class ConfigHandler {
         // For CEF mode, uncomment and set your debug port:
         // mode: 'cef',
         // cefPort: 8860,  // Your CEF debug port from .debug file
-        captureDeprecationWarnings: true,  // Enable to capture Shadow DOM and other deprecation warnings
-        lifecycle: {
-            captureNavigation: true,    // Page Navigated, Page Loaded, DOM Content Loaded
-            captureSession: true,       // Session Started/Ended, CEF Connected/Disconnected
-            capturePerformance: false,  // firstPaint, firstContentfulPaint
-            captureDialogs: false       // JavaScript dialogs, window opened
-        },
-        captureViteErrors: true,  // Capture Vite dev server errors
+        captureDeprecationWarnings: true,
         throttle: {
             maxPerSecond: 100,
             suppressAfter: 100
@@ -120,14 +106,7 @@ export class ConfigHandler {
     static mergeWithVSCodeSettings(config: DevMirrorConfig, vscodeConfig: any): DevMirrorConfig {
         return {
             ...config,
-            captureDeprecationWarnings: vscodeConfig.get('devmirror.captureDeprecationWarnings', config.captureDeprecationWarnings),
-            captureViteErrors: vscodeConfig.get('devmirror.captureViteErrors', config.captureViteErrors),
-            lifecycle: {
-                captureNavigation: vscodeConfig.get('devmirror.lifecycle.captureNavigation', config.lifecycle?.captureNavigation ?? true),
-                captureSession: vscodeConfig.get('devmirror.lifecycle.captureSession', config.lifecycle?.captureSession ?? true),
-                capturePerformance: vscodeConfig.get('devmirror.lifecycle.capturePerformance', config.lifecycle?.capturePerformance ?? false),
-                captureDialogs: vscodeConfig.get('devmirror.lifecycle.captureDialogs', config.lifecycle?.captureDialogs ?? false)
-            }
+            captureDeprecationWarnings: vscodeConfig.get('devmirror.captureDeprecationWarnings', config.captureDeprecationWarnings)
         };
     }
 }

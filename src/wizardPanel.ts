@@ -28,7 +28,7 @@ export class WizardViewProvider {
         // Create a new panel
         const panel = vscode.window.createWebviewPanel(
             'devmirrorWizard',
-            'DevMirror Setup Wizard',
+            'DevMirror Startup Wizard',
             column,
             {
                 enableScripts: true,
@@ -192,7 +192,7 @@ export class WizardViewProvider {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DevMirror Setup Wizard</title>
+    <title>DevMirror Startup Wizard</title>
     <style>
         body {
             background: #1e1e1e;
@@ -333,7 +333,7 @@ export class WizardViewProvider {
     </style>
 </head>
 <body>
-    <h2>🔧 DevMirror Setup Wizard</h2>
+    <h2>DevMirror Startup Wizard</h2>
 
     <div class="script-info" id="scriptInfo">
         <strong>Script:</strong> <span id="scriptName">loading...</span><br>

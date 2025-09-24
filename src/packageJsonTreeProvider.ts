@@ -34,16 +34,28 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
             '**/node_modules/**',
             '**/.cache/**',
             '**/.vite/**',
+            '**/.vite-cache/**',
             '**/.parcel-cache/**',
             '**/.next/**',
             '**/.nuxt/**',
             '**/dist/**',
             '**/build/**',
+            '**/out/**',
             '**/.git/**',
             '**/.svn/**',
             '**/.hg/**',
             '**/temp/**',
-            '**/tmp/**'
+            '**/tmp/**',
+            '**/.temp/**',
+            '**/.tmp/**',
+            '**/coverage/**',
+            '**/.turbo/**',
+            '**/.webpack/**',
+            '**/.rollup.cache/**',
+            '**/public/**',
+            '**/.output/**',
+            '**/.vercel/**',
+            '**/.netlify/**'
         ].join(',');
 
         const files = await vscode.workspace.findFiles(pattern, `{${excludePatterns}}`);
@@ -65,7 +77,14 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
             await this.findPackageJsonFiles();
             return this.packageJsonFiles.map(filePath => {
                 const relativePath = path.relative(this.workspaceRoot, filePath);
-                const dirName = path.dirname(relativePath) || '.';
+                let dirName = path.dirname(relativePath) || '.';
+
+                // If it's the root package.json, show it as 'projectName.root'
+                if (dirName === '.') {
+                    const projectName = path.basename(this.workspaceRoot);
+                    dirName = `${projectName}.root`;
+                }
+
                 return new PackageJsonItem(
                     dirName,
                     filePath,

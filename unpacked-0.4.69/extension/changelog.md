@@ -2,27 +2,21 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
-## [0.4.70] - 2025-09-24
+## [0.4.69] - 2025-09-24
 
-### Fixed
-- Browser now opens to correct target URL instead of docs page in CEF mode
-- Enhanced package.json cache detection with more comprehensive exclusion patterns
+### Added
+- **Lifecycle Event Configuration** - Granular control over lifecycle logging
+  - `devmirror.lifecycle.captureNavigation` - Control page navigation events (default: true)
+  - `devmirror.lifecycle.captureSession` - Control session and connection events (default: true)
+  - `devmirror.lifecycle.capturePerformance` - Control performance timing events (default: false)
+  - `devmirror.lifecycle.captureDialogs` - Control JavaScript dialogs and window events (default: false)
+  - Settings are automatically passed from VS Code to CLI via command line arguments
 
-### Changed
-- Renamed "Setup Wizard" to "Startup Wizard" with magic wand icon
-- Root package.json now displays as "projectName.root" instead of "."
-
-### Reverted
-- Removed experimental lifecycle event configuration (from 0.4.69)
-- Removed Vite-specific error capture features (from 0.4.69)
-- Simplified back to basic, reliable event capture
-
-## [0.4.69] - 2025-09-24 [REVERTED]
-
-### Reverted
-- Removed experimental lifecycle event configuration that was causing issues
-- Removed Vite-specific error capture features that added complexity
-- Simplified back to basic, reliable event capture
+- **Vite Error Capture** - Advanced error detection for Vite development
+  - `devmirror.captureViteErrors` - Capture Vite-specific build and runtime errors (default: true)
+  - Detects module loading failures, build errors, and syntax errors from Vite
+  - Distinctive `🔥 VITE` labeling for Vite-related errors in logs
+  - Monitors console, network, and log domains for Vite error patterns
 
 ### Fixed
 - **Browser Deprecation Warning Capture** - Fixed missing browser-generated warnings

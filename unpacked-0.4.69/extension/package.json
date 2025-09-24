@@ -15,7 +15,7 @@
     "devtools protocol",
     "console capture"
   ],
-  "version": "0.4.70",
+  "version": "0.4.69",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -46,9 +46,9 @@
         {
           "type": "webview",
           "id": "devmirror.setupWizard",
-          "name": "Startup Wizard",
-          "icon": "$(wand)",
-          "contextualTitle": "Startup Wizard",
+          "name": "Setup Wizard",
+          "icon": "$(gear)",
+          "contextualTitle": "Setup Wizard",
           "visibility": "collapsed",
           "when": "devmirror.showWizard && workbenchState != empty"
         }
@@ -87,8 +87,8 @@
       },
       {
         "command": "devmirror.openSetupWizard",
-        "title": "Startup Wizard",
-        "icon": "$(wand)"
+        "title": "Setup Wizard",
+        "icon": "$(gear)"
       },
       {
         "command": "devmirror.undoMirrorScript",
@@ -154,6 +154,31 @@
           "type": "boolean",
           "default": true,
           "description": "Capture browser deprecation warnings like declarative Shadow DOM messages"
+        },
+        "devmirror.lifecycle.captureNavigation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture page navigation events (Page Navigated, Page Loaded, DOM Content Loaded)"
+        },
+        "devmirror.lifecycle.captureSession": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture session events (Session Started/Ended, CEF Connected/Disconnected)"
+        },
+        "devmirror.lifecycle.capturePerformance": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture performance events (firstPaint, firstContentfulPaint)"
+        },
+        "devmirror.lifecycle.captureDialogs": {
+          "type": "boolean",
+          "default": false,
+          "description": "Capture JavaScript dialogs and window events (alert, confirm, window opened)"
+        },
+        "devmirror.captureViteErrors": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture Vite dev server errors and build issues"
         }
       }
     }

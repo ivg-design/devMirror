@@ -79,13 +79,6 @@ export class LogWriter {
             return;
         }
 
-        // Filter lifecycle events based on config settings
-        if (entry.type === 'lifecycle' && this.config?.lifecycle) {
-            // Check if this is a session event (Session Started/Ended, CEF Connected/Disconnected)
-            if (entry.message.includes('Session') || entry.message.includes('CEF')) {
-                if (!this.config.lifecycle.captureSession) return;
-            }
-        }
 
         const formattedEntry = this.formatEntry(entry);
         const entrySize = Buffer.byteLength(formattedEntry);

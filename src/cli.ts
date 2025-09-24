@@ -50,14 +50,7 @@ async function main() {
 
     // Parse VS Code settings overrides
     const settingsOverrides = {
-        lifecycle: {
-            captureNavigation: !args.includes('--no-navigation'),
-            captureSession: !args.includes('--no-session'),
-            capturePerformance: args.includes('--with-performance'),
-            captureDialogs: args.includes('--with-dialogs')
-        },
-        captureDeprecationWarnings: !args.includes('--no-deprecation-warnings'),
-        captureViteErrors: args.includes('--with-vite-errors')
+        captureDeprecationWarnings: !args.includes('--no-deprecation-warnings')
     };
 
     // If companion mode, delegate to companion script
@@ -93,11 +86,7 @@ async function main() {
         // Apply VS Code settings overrides
         config = {
             ...config,
-            ...settingsOverrides,
-            lifecycle: {
-                ...config.lifecycle,
-                ...settingsOverrides.lifecycle
-            }
+            ...settingsOverrides
         };
 
         console.log('✅ Applied VS Code settings overrides');

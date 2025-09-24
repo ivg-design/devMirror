@@ -2,8 +2,6 @@ import { LogWriter } from './logWriter';
 import { DevMirrorConfig } from './configHandler';
 import { ConsoleEventHandler } from './handlers/ConsoleEventHandler';
 import { NetworkEventHandler } from './handlers/NetworkEventHandler';
-import { PageEventHandler } from './handlers/PageEventHandler';
-import { ViteErrorHandler } from './handlers/ViteErrorHandler';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as os from 'os';
@@ -42,8 +40,6 @@ export class CDPManager {
     // Event handlers
     private consoleHandler!: ConsoleEventHandler;
     private networkHandler!: NetworkEventHandler;
-    private pageHandler!: PageEventHandler;
-    private viteHandler!: ViteErrorHandler;
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -114,8 +110,6 @@ export class CDPManager {
         // Initialize event handlers
         this.consoleHandler = new ConsoleEventHandler(this.logWriter, config);
         this.networkHandler = new NetworkEventHandler(this.logWriter);
-        this.pageHandler = new PageEventHandler(this.logWriter, config);
-        this.viteHandler = new ViteErrorHandler(this.logWriter, config);
 
         // Auto-detect port if URL not provided or autoDetectPort is true
         let targetUrl = config.url;
@@ -256,10 +250,7 @@ export class CDPManager {
             // Check for Vite errors in console messages
             if (event.type === 'error' || event.type === 'warn') {
                 const message = event.args?.map((arg: any) => arg.value || arg.description || '').join(' ');
-                if (message) {
-                    this.viteHandler.handleConsoleError(message);
                 }
-            }
         });
 
         this.client.on('Runtime.exceptionThrown', (event: any) => {
@@ -286,13 +277,6 @@ export class CDPManager {
             this.networkHandler.handleLoadingFailed(event);
 
             // Check for Vite module loading errors
-            if (event.type && event.errorText && event.response) {
-                this.viteHandler.handleNetworkError(
-                    event.response.url || 'unknown',
-                    event.response.status || 0,
-                    event.errorText
-                );
-            }
         });
 
         this.client.on('Network.responseReceived', (event: any) => {
@@ -308,10 +292,6 @@ export class CDPManager {
         this.client.on('Log.entryAdded', (event: any) => {
             this.consoleHandler.handleLogEntry(event);
 
-            // Check for Vite build errors in log entries
-            if (event.entry && (event.entry.level === 'error' || event.entry.level === 'warning')) {
-                this.viteHandler.handleLogEntry(event.entry.level, event.entry.source, event.entry.text);
-            }
         });
 
         this.client.on('Console.messageAdded', (event: any) => {
@@ -606,9 +586,7 @@ export class CDPManager {
             // Initialize event handlers
             this.consoleHandler = new ConsoleEventHandler(this.logWriter, config);
             this.networkHandler = new NetworkEventHandler(this.logWriter);
-            this.pageHandler = new PageEventHandler(this.logWriter, config);
-            this.viteHandler = new ViteErrorHandler(this.logWriter, config);
-        }
+                }
 
         console.log('🎨 DevMirror Active (CEF Debug Mode - Direct Connection)');
         console.log(`├─ CEF Debug Port: ${config.cefPort}`);
@@ -660,7 +638,7 @@ export class CDPManager {
             // Auto-open browser if configured
             if (config.autoOpenBrowser) {
                 console.log('\n🌐 Opening browser to CEF DevTools...');
-                await this.openCEFDevTools(config.cefPort!);
+                await this.openCEFDevTools(config.cefPort!, config);
             } else {
                 console.log('\n📝 To view the console in a browser (optional):');
                 console.log(`   Open Chrome and navigate to http://localhost:${config.cefPort}`);
@@ -694,7 +672,7 @@ export class CDPManager {
         }
     }
 
-    private async openCEFDevTools(cefPort: number): Promise<void> {
+    private async openCEFDevTools(cefPort: number, config?: DevMirrorConfig): Promise<void> {
         try {
             // Get the list of debug targets
             const targetsUrl = `http://localhost:${cefPort}/json`;
@@ -742,20 +720,20 @@ export class CDPManager {
                         });
                     }
                 } else {
-                    // Fallback to index page if no devtools URL found
-                    console.log('   ⚠️ No DevTools URL found, opening index page');
-                    const indexUrl = `http://localhost:${cefPort}`;
-                    await this.openBrowserFallback(indexUrl);
+                    // Fallback to target URL if no devtools URL found
+                    console.log('   ⚠️ No DevTools URL found, opening target page');
+                    const targetUrl = config?.url || this.config?.url || `http://localhost:${cefPort}`;
+                    await this.openBrowserFallback(targetUrl);
                 }
             } else {
-                // Can't fetch targets, open index page
-                const indexUrl = `http://localhost:${cefPort}`;
-                await this.openBrowserFallback(indexUrl);
+                // Can't fetch targets, open target URL
+                const targetUrl = this.config?.url || `http://localhost:${cefPort}`;
+                await this.openBrowserFallback(targetUrl);
             }
         } catch (error: any) {
             console.log('   ⚠️ Error fetching debug targets:', error.message);
-            const indexUrl = `http://localhost:${cefPort}`;
-            await this.openBrowserFallback(indexUrl);
+            const targetUrl = this.config?.url || `http://localhost:${cefPort}`;
+            await this.openBrowserFallback(targetUrl);
         }
     }
 
@@ -1589,7 +1567,7 @@ export class CDPManager {
                                 // Auto-refresh browser if it was opened
                                 if (config?.autoOpenBrowser && config?.cefPort) {
                                     console.log('   🔄 Refreshing browser DevTools...');
-                                    await this.openCEFDevTools(config.cefPort);
+                                    await this.openCEFDevTools(config.cefPort, config);
                                 }
 
                                 this.isReconnecting = false;
