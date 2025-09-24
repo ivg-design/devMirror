@@ -4,15 +4,21 @@ import * as vscode from 'vscode';
 
 export class ScriptModifier {
     private packageJsonPath: string;
+    private context: vscode.ExtensionContext;
 
-    constructor(private rootPath: string) {
+    constructor(private rootPath: string, context: vscode.ExtensionContext) {
         this.packageJsonPath = path.join(rootPath, 'package.json');
+        this.context = context;
     }
 
     async addMirrorScripts(): Promise<void> {
         try {
-            // First, install the wrapper script to the project
-            await this.installWrapper();
+            // Get CLI path from global state (set in extension activation)
+            const cliPath = this.context.globalState.get<string>('devmirror.cliPath');
+
+            if (!cliPath) {
+                throw new Error('DevMirror CLI path not found. Please restart VS Code.');
+            }
 
             const content = await fs.readFile(this.packageJsonPath, 'utf8');
             const packageJson = JSON.parse(content);
@@ -20,9 +26,6 @@ export class ScriptModifier {
             if (!packageJson.scripts) {
                 packageJson.scripts = {};
             }
-
-            // Use the local wrapper script that dynamically finds the extension
-            const wrapperPath = path.join(this.rootPath, 'node_modules', '.bin', 'devmirror-cli');
 
             const scriptsToMirror = Object.keys(packageJson.scripts).filter(name =>
                 (name.includes('dev') || name.includes('start')) &&
@@ -35,10 +38,10 @@ export class ScriptModifier {
                 const originalScript = packageJson.scripts[name];
 
                 if (!packageJson.scripts[mirrorName]) {
-                    // Pass the package.json directory as an environment variable
+                    // Pass the package.json directory as an environment variable, use direct CLI path
                     const packageDir = path.dirname(this.packageJsonPath);
                     packageJson.scripts[mirrorName] =
-                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "npx devmirror-cli" "${originalScript}"`;
+                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"${cliPath}\\"" "${originalScript}"`;
                     modified = true;
                     console.log(`Added mirror script: ${mirrorName}`);
                 }
@@ -47,7 +50,7 @@ export class ScriptModifier {
             if (!scriptsToMirror.length) {
                 if (!packageJson.scripts['dev:mirror']) {
                     packageJson.scripts['dev:mirror'] =
-                        `concurrently "npx devmirror-cli" "echo \\"No dev script found\\""`;
+                        `concurrently "node \\"${cliPath}\\"" "echo \\"No dev script found\\""`;
                     modified = true;
                 }
             }
@@ -95,28 +98,4 @@ export class ScriptModifier {
         }
     }
 
-    private async installWrapper(): Promise<void> {
-        const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
-                             vscode.extensions.getExtension('devmirror')?.extensionPath;
-
-        if (!extensionPath) {
-            throw new Error('DevMirror extension not found');
-        }
-
-        // Copy wrapper script to project
-        const wrapperSource = path.join(extensionPath, 'out', 'devmirror-cli-wrapper.js');
-        const binDir = path.join(this.rootPath, 'node_modules', '.bin');
-        const wrapperDest = path.join(binDir, 'devmirror-cli');
-
-        // Ensure .bin directory exists
-        await fs.mkdir(binDir, { recursive: true });
-
-        // Copy wrapper script
-        await fs.copyFile(wrapperSource, wrapperDest);
-
-        // Make it executable
-        await fs.chmod(wrapperDest, '755');
-
-        console.log('Installed devmirror-cli wrapper');
-    }
 }

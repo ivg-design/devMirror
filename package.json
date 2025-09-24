@@ -15,7 +15,7 @@
     "devtools protocol",
     "console capture"
   ],
-  "version": "0.4.67",
+  "version": "0.4.69",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -26,10 +26,10 @@
   ],
   "activationEvents": [
     "onStartupFinished",
-    "onCommand:devmirror.setup",
-    "onCommand:devmirror.start",
-    "onCommand:devmirror.stop",
-    "onCommand:devmirror.showLogs",
+    "devmirror.setup",
+    "devmirror.start",
+    "devmirror.stop",
+    "devmirror.showLogs",
     "workspaceContains:devmirror.config.json",
     "workspaceContains:**/devmirror-logs/**"
   ],
@@ -160,10 +160,10 @@
     }
   },
   "scripts": {
-    "vscode:prepublish": "npm run package",
+    "vscode:prepublish": "npm run compile",
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "package": "webpack --mode production --devtool hidden-source-map",
+    "package": "npm run compile",
     "compile-tests": "tsc -p . --outDir out",
     "watch-tests": "tsc -p . -w --outDir out",
     "pretest": "npm run compile-tests && npm run lint",

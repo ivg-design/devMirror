@@ -2,6 +2,43 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.69] - 2025-09-24
+
+### Fixed
+- **Console Warning Capture** - Fixed missing `console.warn()` messages
+  - Removed incorrect filtering of deprecation warnings from `Runtime.consoleAPICalled`
+  - DevMirror now captures 100% of console output as designed (log, info, warn, error, debug)
+  - Shadow DOM and other user-generated warnings now properly captured with full stack traces
+  - `captureDeprecationWarnings` config now only affects browser-generated warnings (`Log.entryAdded`)
+
+### Technical
+- Restored core principle: DevMirror captures ALL console messages regardless of content
+- Distinguished between user console calls (Runtime domain) vs browser warnings (Log domain)
+- Fixed logic error that was filtering user-generated deprecation warnings
+
+## [0.4.68] - 2025-09-24
+
+### Changed
+- **CLI Path Resolution Architecture** - Complete overhaul using `context.extensionUri`
+  - Replaced fragile extension path lookups with modern VS Code URI API
+  - CLI path now always points to currently running extension (eliminates version conflicts)
+  - Removed entire NPM wrapper system - scripts now use direct CLI path
+  - Zero-conflict path resolution: no more 0.4.66 vs 0.4.67 path mismatches
+  - Future-proof: works in VS Code Web, remote, and local environments
+
+### Removed
+- **NPM Wrapper Dependencies** - Eliminated complex wrapper architecture
+  - Removed `devmirror-cli-wrapper.js` generation and copying
+  - Removed `npx devmirror-cli` dependency in generated scripts
+  - Scripts now use `node "{direct-cli-path}"` for maximum reliability
+  - Simplified codebase with 90% reduction in path resolution complexity
+
+### Technical
+- Updated all extension components to use `context.globalState` for CLI path storage
+- Modified `DevMirrorLauncher`, `PackageJsonTreeProvider`, and `ScriptModifier` to use stored paths
+- Enhanced extension activation to store CLI path immediately on startup
+- Cross-platform URI handling ensures consistent behavior across all environments
+
 ## [0.4.67] - 2025-09-24
 
 ### Added

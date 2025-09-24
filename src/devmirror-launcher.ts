@@ -7,10 +7,12 @@ export class DevMirrorLauncher {
     private process: ChildProcess | null = null;
     private outputChannel: vscode.OutputChannel;
     private statusMonitor: StatusMonitor;
+    private context: vscode.ExtensionContext;
 
-    constructor(outputChannel: vscode.OutputChannel, statusMonitor: StatusMonitor) {
+    constructor(outputChannel: vscode.OutputChannel, statusMonitor: StatusMonitor, context: vscode.ExtensionContext) {
         this.outputChannel = outputChannel;
         this.statusMonitor = statusMonitor;
+        this.context = context;
     }
 
     async start(workspacePath: string): Promise<void> {
@@ -19,20 +21,13 @@ export class DevMirrorLauncher {
             return;
         }
 
-        // Get the path to the CLI in the extension - try multiple possible IDs
-        const extensionPath = vscode.extensions.getExtension('IVGDesign.devmirror')?.extensionPath ||
-                              vscode.extensions.getExtension('devmirror')?.extensionPath ||
-                              vscode.extensions.getExtension('unknown.devmirror')?.extensionPath ||
-                              vscode.extensions.getExtension('undefined_publisher.devmirror')?.extensionPath;
+        // Get CLI path from global state (set in extension activation)
+        const cliPath = this.context.globalState.get<string>('devmirror.cliPath');
 
-        if (!extensionPath) {
-            const allExtensions = vscode.extensions.all.map(ext => ext.id);
-            const devmirrorExts = allExtensions.filter(id => id.toLowerCase().includes('devmirror'));
-            vscode.window.showErrorMessage(`DevMirror extension path not found. Found: ${devmirrorExts.join(', ')}`);
+        if (!cliPath) {
+            vscode.window.showErrorMessage('DevMirror CLI path not found. Please restart VS Code.');
             return;
         }
-
-        const cliPath = path.join(extensionPath, 'out', 'cli.js');
 
         this.outputChannel.show();
         this.outputChannel.appendLine('Starting DevMirror capture...');

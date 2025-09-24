@@ -976,16 +976,6 @@ export class CDPManager {
                     timestamp: Date.now()
                 });
 
-            } else if (method === 'Log.entryAdded') {
-                // Handle Log domain entries
-                const entry = params.entry;
-                this.logWriter.write({
-                    type: 'console',
-                    method: entry.level || 'verbose',
-                    message: entry.text || '',
-                    timestamp: Date.now()
-                });
-
             } else if (method === 'Runtime.exceptionThrown') {
                 // Handle exceptions
                 const details = params.exceptionDetails;

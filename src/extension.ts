@@ -11,9 +11,13 @@ import { WizardViewProvider } from './wizardViewProvider';
 import { BackupManager } from './backupManager';
 
 export function activate(context: vscode.ExtensionContext) {
+    // Store CLI path using context.extensionUri on activation
+    const cliUri = vscode.Uri.joinPath(context.extensionUri, 'out', 'cli.js');
+    context.globalState.update('devmirror.cliPath', cliUri.fsPath);
+
     const outputChannel = vscode.window.createOutputChannel('DevMirror');
     const statusMonitor = new StatusMonitor();
-    const launcher = new DevMirrorLauncher(outputChannel, statusMonitor);
+    const launcher = new DevMirrorLauncher(outputChannel, statusMonitor, context);
 
     // Function to handle activation messages
     const handleActivation = (args: any) => {
@@ -306,7 +310,7 @@ export function activate(context: vscode.ExtensionContext) {
             outputChannel.appendLine('├─ puppeteer-core found ✓');
 
             const config = new ConfigHandler(rootPath);
-            const modifier = new ScriptModifier(rootPath);
+            const modifier = new ScriptModifier(rootPath, context);
 
             outputChannel.appendLine('├─ Creating config file...');
             await config.initialize();
@@ -413,7 +417,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Register tree view for monorepo support
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
     if (workspaceFolder) {
-        const treeProvider = new PackageJsonTreeProvider(workspaceFolder.uri.fsPath);
+        const treeProvider = new PackageJsonTreeProvider(workspaceFolder.uri.fsPath, context);
         const treeView = vscode.window.createTreeView('devmirrorPackages', {
             treeDataProvider: treeProvider,
             showCollapseAll: true
