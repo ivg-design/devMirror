@@ -75,10 +75,35 @@ export class CDPManager {
         }
 
         if (!puppeteerLoaded) {
-            console.error('❌ puppeteer-core not found. Please install it:');
-            console.error('   npm install puppeteer-core');
-            console.error('   or globally: npm install -g puppeteer-core');
-            process.exit(1);
+            console.error('❌ puppeteer-core not found.');
+            console.log('🔧 Auto-installing puppeteer-core...');
+
+            try {
+                const { execSync } = require('child_process');
+
+                // Try to install in the current project first
+                if (require('fs').existsSync('package.json')) {
+                    console.log('📦 Installing puppeteer-core as project dependency...');
+                    execSync('npm install puppeteer-core', { stdio: 'inherit' });
+
+                    // Try loading again after installation
+                    const projectPath = path.join(process.cwd(), 'node_modules', 'puppeteer-core');
+                    this.puppeteer = require(projectPath);
+                    puppeteerLoaded = true;
+                    console.log('✅ puppeteer-core installed and loaded successfully!');
+                } else {
+                    console.error('⚠️  No package.json found. Please install puppeteer-core manually:');
+                    console.error('   npm install puppeteer-core');
+                    console.error('   or globally: npm install -g puppeteer-core');
+                    process.exit(1);
+                }
+            } catch (installError) {
+                console.error('❌ Failed to auto-install puppeteer-core:', installError);
+                console.error('💡 Please install manually:');
+                console.error('   npm install puppeteer-core');
+                console.error('   or globally: npm install -g puppeteer-core');
+                process.exit(1);
+            }
         }
 
         this.logWriter = new LogWriter(config.outputDir);
