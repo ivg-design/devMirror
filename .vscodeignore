@@ -2,11 +2,16 @@
 .vscode/**
 .vscode-test/**
 src/**
-out/**
 .git/**
 .github/**
 *.vsix
 .DS_Store
+
+# Exclude compiled TypeScript but keep webpack bundle
+out/**/*.js
+out/**/*.map
+!out/extension.js
+!out/extension.js.map
 
 # Development files
 webpack.config.js
