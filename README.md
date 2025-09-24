@@ -2,67 +2,30 @@
 
 **Capture browser console output using Chrome DevTools Protocol**
 
-[![Version](https://img.shields.io/badge/version-0.4.66-blue.svg)](CHANGELOG.md)
-[![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
-[![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.4.72-blue.svg)](CHANGELOG.md) [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign) [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
-## 📦 NPM Package
+DevMirror is a VS Code extension that captures browser console output to timestamped log files using Chrome DevTools Protocol (CDP) or Adobe CEF debugging.
 
-[![NPM Version](https://img.shields.io/npm/v/devmirror)](https://www.npmjs.com/package/devmirror)
-[![NPM Downloads](https://img.shields.io/npm/dm/devmirror)](https://www.npmjs.com/package/devmirror)
-[![Package Size](https://img.shields.io/bundlephobia/minzip/devmirror)](https://bundlephobia.com/package/devmirror)
+## Current Features (v0.4.72)
 
-**Install globally:**
-```bash
-npm install -g devmirror
-devmirror
-```
-
-**Or use with npx (no installation):**
-```bash
-npx devmirror
-```
-
-**Add to your project:**
-```bash
-npm install --save-dev devmirror
-```
-
-```json
-{
-  "scripts": {
-    "dev:mirror": "concurrently \"devmirror\" \"vite\""
-  }
-}
-```
-
----
-
-DevMirror is a VS Code extension that captures browser console output to timestamped log files using Chrome DevTools Protocol (CDP) via Puppeteer-core.
-
-## Current Features (v0.4.66)
-
-- **Console Capture** - Logs console.log, error, warn, info, debug messages with full stack traces
-- **Deprecation Warnings Capture** - NEW! Captures browser deprecation warnings (Shadow DOM, etc.)
-- **CDP & CEF Modes** - Support for regular browsers (port 9222) and Adobe CEF (port 8555)
+- **Complete Console Capture** - Logs all console messages (log, error, warn, info, debug) with full stack traces
+- **Dual Mode Support** - Works with regular Chrome (CDP) and Adobe CEF extensions
+- **Smart Configuration** - Auto-updates CLI paths on extension activation
 - **DevMirror Scripts Panel** - Visual tree view in Explorer sidebar showing all package.json scripts
-- **Quick Add (+)** - One-click to add mirror script with default settings
-- **Setup Wizard (⚙️)** - Advanced configuration interface with dropdowns
-- **Undo Changes (↩)** - Restore original package.json
-- **Auto Port Detection** - Automatically finds running dev server port
-- **Reconnect Throttling** - Max 10 attempts with 5-second delays (CEF mode)
-- **Status Bar** - Shows active capture with log count and duration
-- **Auto-fold Logs** - Automatically folds log entries in editor for better readability
-- **Auto-refresh** - Updates open log files in real-time as new content arrives
-- **Stack Traces** - Captures full JavaScript stack traces for errors and console messages
-- **Network Errors** - Shows initiator stack traces for failed network requests
-- **Auto Open Browser** - Optional auto-launch of CEF debug interface
+- **One-Click Setup** - Add mirror scripts instantly with the (+) button
+- **Startup Wizard** - Advanced configuration interface with magic wand icon
+- **Auto Port Detection** - Automatically finds running dev server ports
+- **Live Status Bar** - Shows active capture with log count and duration
+- **Real-time Updates** - Log files update as new content arrives
+- **Stack Traces** - Full JavaScript stack traces for errors and console messages
+- **Network Error Tracking** - Captures failed network requests with details
+- **Intelligent Filtering** - Excludes cache directories and temporary files
 
 ## Installation
 
 1. Install DevMirror from VS Code Marketplace
 2. Open your project in VS Code
-3. Puppeteer-core will be installed automatically when needed
+3. Use the DevMirror Scripts panel or Command Palette to set up
 
 ## Quick Start
 
@@ -70,7 +33,7 @@ DevMirror is a VS Code extension that captures browser console output to timesta
 
 1. Look for **DevMirror Scripts** panel in Explorer sidebar
 2. Click **+** button next to any script for instant setup
-3. Or click **⚙️** for Setup Wizard with advanced options
+3. Or click the magic wand icon for the Startup Wizard
 4. Run your new `:mirror` script
 
 ### Option 2: Command Palette
@@ -94,7 +57,7 @@ npm run dev
 npm run dev:mirror
 ```
 
-Logs are written to `./devmirror-logs/` folder.
+Logs are written to `./devmirror-logs/` folder with timestamps.
 
 ## Configuration
 
@@ -103,22 +66,23 @@ Logs are written to `./devmirror-logs/` folder.
 ```json
 {
   "outputDir": "./devmirror-logs",
-  "mode": "cdp"
+  "mode": "cdp",
+  "url": "http://localhost:3000"
 }
 ```
 
-### CEF Mode (Adobe Extensions)
+### Adobe CEF Mode
 
 ```json
 {
   "mode": "cef",
-  "cefPort": 8555,
+  "cefPort": 8860,
   "outputDir": "./devmirror-logs",
   "autoOpenBrowser": true
 }
 ```
 
-### Available Options
+### Configuration Options
 
 | Option | Type | Description | Default |
 |--------|------|-------------|---------|
@@ -129,30 +93,25 @@ Logs are written to `./devmirror-logs/` folder.
 | chromePath | string | Path to Chrome executable | Auto-detected |
 | autoDetectPort | boolean | Auto-detect running dev server | false |
 | autoOpenBrowser | boolean | Open browser in CEF mode | false |
-| captureDeprecationWarnings | boolean | Capture browser deprecation warnings | true |
-| throttle | object | Message throttling settings | See below |
-
-Throttle options:
-- `maxPerSecond`: Maximum messages per second (default: 100)
-- `suppressAfter`: Suppress after this many repeats (default: 100)
+| captureDeprecationWarnings | boolean | Capture browser warnings | true |
+| cliPath | string | Path to CLI (auto-managed) | Auto-updated |
 
 ## Log Output Format
 
 ```
-[250922T14:30:52.12] [LOG] Application started
-[250922T14:30:52.13] [ERROR] Failed to load resource
-[250922T14:30:52.14] [WARN] Deprecation warning
-[250922T14:30:52.15] [INFO] User logged in
-[250922T14:30:52.16] [NETWORK:ERROR] ERR_CONNECTION_REFUSED
-    URL: http://api.example.com/users
-[250922T14:30:52.17] [BROWSER:WARNING] Security warning
-[250922T14:30:52.18] [DEPRECATION] Found declarative shadowrootmode attribute on a template
-[250922T14:30:52.19] [LIFECYCLE] Page loaded
+[250924T14:30:52.12] [LOG] Application started
+[250924T14:30:52.13] [ERROR] Failed to load resource
+    at fetchData (app.js:45:12)
+    at initialize (app.js:23:8)
+[250924T14:30:52.14] [WARN] Using deprecated API
+[250924T14:30:52.15] [INFO] User logged in successfully
+[250924T14:30:52.16] [LIFECYCLE] ════════════ Page Navigated ════════════
+[250924T14:30:52.17] [LIFECYCLE] ════════════ Page Loaded ════════════
 ```
 
 Format: `[yymmddThh:mm:ss.ms] [TYPE] message`
 - Timestamp: YYMMDDThhmmss.ms (2-digit milliseconds)
-- Types: LOG, ERROR, WARN, INFO, DEBUG, NETWORK:ERROR, BROWSER:level, DEPRECATION, LIFECYCLE
+- Types: LOG, ERROR, WARN, INFO, DEBUG, LIFECYCLE, etc.
 
 ## VS Code Commands
 
@@ -163,80 +122,59 @@ Format: `[yymmddThh:mm:ss.ms] [TYPE] message`
 | `DevMirror: Stop Capture` | Stop active capture |
 | `DevMirror: Show Logs` | Open logs directory |
 | `DevMirror: Open Settings` | Open VS Code settings |
-| `DevMirror: Refresh Scripts` | Refresh scripts tree |
 
 ## Status Bar
 
-- **Idle**: `DevMirror` (hidden by default, shows on hover)
-- **Active**: `🟢 DevMirror | package-name | 234 logs | 5m 32s`
+- **Idle**: `DevMirror` (click to activate)
+- **Active**: `DevMirror Active | projectName.root | 234 logs | 5m 32s`
 
-Click to open logs directory.
+Click status bar to open logs directory.
 
-## Setup Wizard Options
+## DevMirror Scripts Panel
 
-When using the gear icon (⚙️):
+The Scripts panel in Explorer shows:
+- Root package.json as `projectName.root`
+- All npm scripts with mirror capability
+- Quick add (+) button for instant setup
+- Magic wand icon for Startup Wizard
 
-- **Execution Mode**: Run immediately or wait for port
-- **Start Trigger**: When port opens or on user input
-- **Target Mode**: CDP, CEF, or auto-detect
-- **Integration Mode**: Replace logger or companion mode
-
-## Script Modifications
-
-DevMirror adds `:mirror` versions of your scripts:
-
-```json
-{
-  "scripts": {
-    "dev": "vite",
-    "dev:mirror": "concurrently \"npx devmirror-cli\" \"npm run dev\""
-  }
-}
-```
-
-For interactive CLIs, it creates a background script:
-```json
-{
-  "scripts": {
-    "dev:mirror": "node scripts/devmirror-background.js & npm run dev"
-  }
-}
-```
+Scripts are automatically updated with dynamic CLI paths that survive extension updates.
 
 ## File Structure
 
 ```
 ./devmirror-logs/
-  ├── 2025-09-22-143052.log  # Timestamped log files
-  ├── current.log             # Symlink to active log
-  └── .devmirror.lock        # Lock file
+  ├── 2025-09-24-143052.log  # Timestamped log files
+  └── current.log             # Symlink to active log
+
+devmirror.config.json         # Project configuration
 ```
+
+## Dynamic Path Resolution
+
+DevMirror automatically updates the CLI path in your config on every VS Code startup or extension update. Scripts read this path at runtime, ensuring they always work regardless of extension version.
 
 ## Requirements
 
 - VS Code 1.104.0+
 - Node.js 16+
 - Chrome or Chromium browser
-- puppeteer-core (auto-installed)
 
 ## Troubleshooting
 
-### Port Not Found
-Ensure your dev server is running or specify port manually in config.
+### Scripts Break After Extension Update
+The extension now auto-updates paths. If you have old scripts, remove and re-add them using the Scripts panel.
+
+### Multiple Dev Servers
+For projects with multiple servers (e.g., app + docs), explicitly set the `url` in devmirror.config.json to target the correct one.
 
 ### CEF Not Connecting
-1. Enable debugging in Adobe application
-2. Check `.debug` file for port number
-3. Update `cefPort` in config
+1. Enable debugging in your Adobe application
+2. Check the `.debug` file for the port number
+3. Set `cefPort` in devmirror.config.json
 
 ### No Logs Appearing
-Check that Chrome/Chromium is installed and accessible.
-
-## Documentation
-
-- [Integration Guide](docs/INTEGRATION.md) - Working with existing tools
-- [Setup Wizard Guide](docs/WIZARD-GUIDE.md) - Wizard options explained
-- [Wiki](https://github.com/ivg-design/devMirror/wiki) - Complete documentation
+Ensure Chrome/Chromium is installed and the target URL is accessible.
 
 ## Support
 

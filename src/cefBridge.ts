@@ -77,7 +77,7 @@ export class CEFBridge {
 
         const debugPort = config.cefPort || await this.detectCEFDebugPort();
 
-        console.log('🔴 DevMirror Active (CEF Mode)');
+        console.log('🟢 DevMirror Active (CEF Mode)');
         console.log(`├─ Connecting to CEF debugger on port ${debugPort}`);
         console.log(`├─ Logging to: ${config.outputDir}`);
         console.log(`└─ Adobe CEP Extension`);

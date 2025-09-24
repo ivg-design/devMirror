@@ -127,7 +127,7 @@ export class CDPManager {
             }
         }
 
-        console.log('🔴 DevMirror Active');
+        console.log('🟢 DevMirror Active');
         console.log(`├─ Chrome launching (CDP connecting)...`);
         console.log(`├─ Logging to: ${config.outputDir}`);
         console.log(`└─ Dev server: ${targetUrl}`);
