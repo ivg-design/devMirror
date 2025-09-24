@@ -23,6 +23,9 @@ export class ScriptModifier {
             const content = await fs.readFile(this.packageJsonPath, 'utf8');
             const packageJson = JSON.parse(content);
 
+            // Check if package uses ESM
+            const isESM = packageJson.type === 'module';
+
             if (!packageJson.scripts) {
                 packageJson.scripts = {};
             }
@@ -39,11 +42,23 @@ export class ScriptModifier {
 
                 if (!packageJson.scripts[mirrorName]) {
                     // Pass the package.json directory as an environment variable
-                    // Read CLI path from devmirror.config.json at runtime
+                    // Use the stable shim path - relative from each package.json location
                     const packageDir = path.dirname(this.packageJsonPath);
-                    const readCliPathScript = `node -e "const fs=require('fs');const path=require('path');try{const config=JSON.parse(fs.readFileSync(path.join('${packageDir}','devmirror.config.json'),'utf8'));console.log(config.cliPath||'');}catch(e){console.error('DevMirror CLI path not found');process.exit(1);}"`;
+                    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || packageDir;
+                    const shimExtension = isESM ? '.cjs' : '.js';
+                    const shimPath = path.join(workspaceRoot, '.vscode', 'devmirror', `cli${shimExtension}`);
+
+                    // Calculate relative path from package.json to shim
+                    let relativeShimPath = path.relative(packageDir, shimPath);
+                    // Ensure forward slashes for cross-platform compatibility
+                    relativeShimPath = relativeShimPath.replace(/\\/g, '/');
+                    // Add ./ prefix if not going up directories
+                    if (!relativeShimPath.startsWith('../')) {
+                        relativeShimPath = './' + relativeShimPath;
+                    }
+
                     packageJson.scripts[mirrorName] =
-                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"$(${readCliPathScript})\\"" "${originalScript}"`;
+                        `DEVMIRROR_PKG_PATH="${packageDir}" concurrently "node \\"${relativeShimPath}\\"" "${originalScript}"`;
                     modified = true;
                     console.log(`Added mirror script: ${mirrorName}`);
                 }
@@ -52,9 +67,21 @@ export class ScriptModifier {
             if (!scriptsToMirror.length) {
                 if (!packageJson.scripts['dev:mirror']) {
                     const packageDir = path.dirname(this.packageJsonPath);
-                    const readCliPathScript = `node -e "const fs=require('fs');const path=require('path');try{const config=JSON.parse(fs.readFileSync(path.join('${packageDir}','devmirror.config.json'),'utf8'));console.log(config.cliPath||'');}catch(e){console.error('DevMirror CLI path not found');process.exit(1);}"`;
+                    const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath || packageDir;
+                    const shimExtension = isESM ? '.cjs' : '.js';
+                    const shimPath = path.join(workspaceRoot, '.vscode', 'devmirror', `cli${shimExtension}`);
+
+                    // Calculate relative path from package.json to shim
+                    let relativeShimPath = path.relative(packageDir, shimPath);
+                    // Ensure forward slashes for cross-platform compatibility
+                    relativeShimPath = relativeShimPath.replace(/\\/g, '/');
+                    // Add ./ prefix if not going up directories
+                    if (!relativeShimPath.startsWith('../')) {
+                        relativeShimPath = './' + relativeShimPath;
+                    }
+
                     packageJson.scripts['dev:mirror'] =
-                        `concurrently "node \\"$(${readCliPathScript})\\"" "echo \\"No dev script found\\""`;
+                        `concurrently "node \\"${relativeShimPath}\\"" "echo \\"No dev script found\\""`;
                     modified = true;
                 }
             }

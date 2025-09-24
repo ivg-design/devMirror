@@ -11,34 +11,74 @@ import { WizardViewProvider } from './wizardViewProvider';
 import { BackupManager } from './backupManager';
 
 export function activate(context: vscode.ExtensionContext) {
-    // Store CLI path in persistent storage on every activation
+    // Store CLI path using context.extensionUri on activation
     const cliUri = vscode.Uri.joinPath(context.extensionUri, 'out', 'cli.js');
     context.globalState.update('devmirror.cliPath', cliUri.fsPath);
 
-    // Update CLI path in devmirror.config.json files when extension activates
+    // Create or update the shim on every activation
     const fs = require('fs');
     const path = require('path');
 
-    // Function to update CLI path in all workspace devmirror.config.json files
-    const updateCliPathInConfigs = async () => {
-        if (vscode.workspace.workspaceFolders) {
-            for (const folder of vscode.workspace.workspaceFolders) {
-                const configPath = path.join(folder.uri.fsPath, 'devmirror.config.json');
-                if (fs.existsSync(configPath)) {
-                    try {
-                        const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                        config.cliPath = cliUri.fsPath;
-                        fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
-                        console.log(`Updated CLI path in ${configPath}`);
-                    } catch (e) {
-                        console.error(`Failed to update ${configPath}:`, e);
-                    }
+    const ensureDevMirrorShim = async () => {
+        if (!vscode.workspace.workspaceFolders) return;
+
+        for (const folder of vscode.workspace.workspaceFolders) {
+            const shimDir = path.join(folder.uri.fsPath, '.vscode', 'devmirror');
+            const configPath = path.join(shimDir, 'config.json');
+
+            // Check if the package.json uses ESM
+            const packageJsonPath = path.join(folder.uri.fsPath, 'package.json');
+            let isESM = false;
+            try {
+                if (fs.existsSync(packageJsonPath)) {
+                    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+                    isESM = packageJson.type === 'module';
                 }
+            } catch (e) {
+                // Ignore errors reading package.json
             }
+
+            // Use .cjs extension for ESM packages, .js for CommonJS
+            const shimExtension = isESM ? '.cjs' : '.js';
+            const shimPath = path.join(shimDir, `cli${shimExtension}`);
+
+            // Create directory if it doesn't exist
+            if (!fs.existsSync(shimDir)) {
+                fs.mkdirSync(shimDir, { recursive: true });
+            }
+
+            // Clean up old shims with wrong extension
+            const oldJsShim = path.join(shimDir, 'cli.js');
+            const oldCjsShim = path.join(shimDir, 'cli.cjs');
+            if (isESM && fs.existsSync(oldJsShim)) {
+                fs.unlinkSync(oldJsShim);
+            }
+            if (!isESM && fs.existsSync(oldCjsShim)) {
+                fs.unlinkSync(oldCjsShim);
+            }
+
+            // Write config with current extension path
+            const config = {
+                extensionPath: context.extensionUri.fsPath,
+                cliPath: cliUri.fsPath
+            };
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n', 'utf8');
+
+            // Write the shim script
+            const shimScript = `#!/usr/bin/env node
+const fs = require('fs');
+const path = require('path');
+const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+const cli = config.cliPath;
+require(cli);
+`;
+
+            fs.writeFileSync(shimPath, shimScript, { encoding: 'utf8', mode: 0o755 });
+            console.log(`DevMirror shim updated at ${shimPath} (${isESM ? 'ESM' : 'CommonJS'} mode)`);
         }
     };
 
-    updateCliPathInConfigs();
+    ensureDevMirrorShim();
 
     const outputChannel = vscode.window.createOutputChannel('DevMirror');
     const statusMonitor = new StatusMonitor();
