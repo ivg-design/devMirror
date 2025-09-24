@@ -2,15 +2,48 @@
 
 **Capture browser console output using Chrome DevTools Protocol**
 
-[![Version](https://img.shields.io/badge/version-0.4.65-blue.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.66-blue.svg)](CHANGELOG.md)
 [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign)
 [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
+## 📦 NPM Package
+
+[![NPM Version](https://img.shields.io/npm/v/devmirror)](https://www.npmjs.com/package/devmirror)
+[![NPM Downloads](https://img.shields.io/npm/dm/devmirror)](https://www.npmjs.com/package/devmirror)
+[![Package Size](https://img.shields.io/bundlephobia/minzip/devmirror)](https://bundlephobia.com/package/devmirror)
+
+**Install globally:**
+```bash
+npm install -g devmirror
+devmirror
+```
+
+**Or use with npx (no installation):**
+```bash
+npx devmirror
+```
+
+**Add to your project:**
+```bash
+npm install --save-dev devmirror
+```
+
+```json
+{
+  "scripts": {
+    "dev:mirror": "concurrently \"devmirror\" \"vite\""
+  }
+}
+```
+
+---
+
 DevMirror is a VS Code extension that captures browser console output to timestamped log files using Chrome DevTools Protocol (CDP) via Puppeteer-core.
 
-## Current Features (v0.4.65)
+## Current Features (v0.4.66)
 
 - **Console Capture** - Logs console.log, error, warn, info, debug messages with full stack traces
+- **Deprecation Warnings Capture** - NEW! Captures browser deprecation warnings (Shadow DOM, etc.)
 - **CDP & CEF Modes** - Support for regular browsers (port 9222) and Adobe CEF (port 8555)
 - **DevMirror Scripts Panel** - Visual tree view in Explorer sidebar showing all package.json scripts
 - **Quick Add (+)** - One-click to add mirror script with default settings
@@ -96,6 +129,7 @@ Logs are written to `./devmirror-logs/` folder.
 | chromePath | string | Path to Chrome executable | Auto-detected |
 | autoDetectPort | boolean | Auto-detect running dev server | false |
 | autoOpenBrowser | boolean | Open browser in CEF mode | false |
+| captureDeprecationWarnings | boolean | Capture browser deprecation warnings | true |
 | throttle | object | Message throttling settings | See below |
 
 Throttle options:
@@ -112,12 +146,13 @@ Throttle options:
 [250922T14:30:52.16] [NETWORK:ERROR] ERR_CONNECTION_REFUSED
     URL: http://api.example.com/users
 [250922T14:30:52.17] [BROWSER:WARNING] Security warning
-[250922T14:30:52.18] [LIFECYCLE] Page loaded
+[250922T14:30:52.18] [DEPRECATION] Found declarative shadowrootmode attribute on a template
+[250922T14:30:52.19] [LIFECYCLE] Page loaded
 ```
 
 Format: `[yymmddThh:mm:ss.ms] [TYPE] message`
 - Timestamp: YYMMDDThhmmss.ms (2-digit milliseconds)
-- Types: LOG, ERROR, WARN, INFO, DEBUG, NETWORK:ERROR, BROWSER:level, LIFECYCLE
+- Types: LOG, ERROR, WARN, INFO, DEBUG, NETWORK:ERROR, BROWSER:level, DEPRECATION, LIFECYCLE
 
 ## VS Code Commands
 

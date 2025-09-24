@@ -196,6 +196,7 @@ export class WizardViewProvider implements vscode.WebviewViewProvider {
                     cefPort: parseInt(config.port),
                     autoOpenBrowser: vscode.workspace.getConfiguration('devmirror').get('autoOpenBrowser', false)
                 }),
+                captureDeprecationWarnings: vscode.workspace.getConfiguration('devmirror').get('captureDeprecationWarnings', true),
                 ...(config.executionMode === 'wait' && { waitMode: true }),
                 ...(config.integrationMode === 'companion' && { companion: true, preserveLogger: true })
             };

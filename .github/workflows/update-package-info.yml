@@ -1,0 +1,163 @@
+name: Update Package Information
+
+on:
+  schedule:
+    # Run daily to check for new package versions
+    - cron: '0 12 * * *'
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Publish NPM Package"]
+    types:
+      - completed
+
+jobs:
+  update-package-info:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Fetch NPM package info
+      id: npm-info
+      run: |
+        # Fetch package info from NPM registry (public API)
+        PACKAGE_INFO=$(curl -s https://registry.npmjs.org/devmirror)
+
+        if [ "$PACKAGE_INFO" = "null" ] || [ -z "$PACKAGE_INFO" ]; then
+          echo "Package not found on NPM"
+          exit 0
+        fi
+
+        # Extract latest version and other info
+        LATEST_VERSION=$(echo "$PACKAGE_INFO" | jq -r '."dist-tags".latest')
+        DOWNLOADS_URL="https://img.shields.io/npm/dm/devmirror"
+        VERSION_URL="https://img.shields.io/npm/v/devmirror"
+
+        echo "latest_version=$LATEST_VERSION" >> $GITHUB_OUTPUT
+        echo "downloads_badge=$DOWNLOADS_URL" >> $GITHUB_OUTPUT
+        echo "version_badge=$VERSION_URL" >> $GITHUB_OUTPUT
+
+        # Get package stats
+        PACKAGE_SIZE=$(echo "$PACKAGE_INFO" | jq -r '.versions["'$LATEST_VERSION'"].dist.unpackedSize // "unknown"')
+        echo "package_size=$PACKAGE_SIZE" >> $GITHUB_OUTPUT
+
+    - name: Update README with package info
+      run: |
+        # Update README.md to include NPM package information
+        if ! grep -q "npm install.*devmirror" README.md; then
+          # Add NPM installation section after the badges
+          sed -i '' '/^[![.*License.*]/a\
+        \
+        ## 📦 NPM Package\
+        \
+        [![NPM Version](https://img.shields.io/npm/v/devmirror)](https://www.npmjs.com/package/devmirror)\
+        [![NPM Downloads](https://img.shields.io/npm/dm/devmirror)](https://www.npmjs.com/package/devmirror)\
+        [![Package Size](https://img.shields.io/bundlephobia/minzip/devmirror)](https://bundlephobia.com/package/devmirror)\
+        \
+        **Install globally:**\
+        ```bash\
+        npm install -g devmirror\
+        devmirror\
+        ```\
+        \
+        **Or use with npx (no installation):**\
+        ```bash\
+        npx devmirror\
+        ```\
+        \
+        **Add to your project:**\
+        ```bash\
+        npm install --save-dev devmirror\
+        ```\
+        \
+        ```json\
+        {\
+        \ \ "scripts": {\
+        \ \ \ \ "dev:mirror": "concurrently \"devmirror\" \"vite\""\
+        \ \ }\
+        }\
+        ```\
+        ' README.md
+        fi
+
+    - name: Create/Update package info file
+      run: |
+        cat > PACKAGE_INFO.md << EOF
+        # DevMirror NPM Package Information
+
+        This file is automatically updated with the latest NPM package information.
+
+        **Latest Version:** ${{ steps.npm-info.outputs.latest_version }}
+        **Package URL:** https://www.npmjs.com/package/devmirror
+        **Downloads:** ![NPM Downloads](https://img.shields.io/npm/dm/devmirror)
+
+        ## Installation
+
+        ### Global Installation
+        \`\`\`bash
+        npm install -g devmirror
+        devmirror
+        \`\`\`
+
+        ### Project Installation
+        \`\`\`bash
+        npm install --save-dev devmirror
+        npx devmirror
+        \`\`\`
+
+        ### Usage with Package Managers
+        \`\`\`bash
+        # NPX (no installation required)
+        npx devmirror
+
+        # Yarn
+        yarn add --dev devmirror
+        yarn devmirror
+
+        # PNPM
+        pnpm add --save-dev devmirror
+        pnpm devmirror
+        \`\`\`
+
+        ## Configuration
+        Create a \`devmirror.config.json\` in your project root:
+
+        \`\`\`json
+        {
+          "mode": "cdp",
+          "outputDir": "./devmirror-logs",
+          "url": "http://localhost:3000",
+          "captureDeprecationWarnings": true
+        }
+        \`\`\`
+
+        ---
+        *Last updated: $(date)*
+        EOF
+
+    - name: Commit changes
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        if [ -n "$(git status --porcelain)" ]; then
+          git add README.md PACKAGE_INFO.md
+          git commit -m "docs: Update NPM package information
+
+          - Latest version: ${{ steps.npm-info.outputs.latest_version }}
+          - Updated package installation instructions
+          - Added NPM badges and links
+
+          [skip ci]"
+          git push
+        else
+          echo "No changes to commit"
+        fi

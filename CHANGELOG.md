@@ -2,6 +2,22 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.66] - 2025-09-24
+
+### Added
+- **Deprecation Warnings Capture** - Now captures browser deprecation warnings like declarative Shadow DOM messages
+  - New configuration option `captureDeprecationWarnings` (default: true)
+  - Conditionally enables Log domain in CDP mode when deprecation warnings are enabled
+  - Prevents duplicate console messages while allowing important browser warnings
+  - Configurable via VS Code settings or devmirror.config.json
+  - Works in both CDP and CEF modes with smart filtering
+
+### Fixed
+- **Missing Browser Warnings** - Previously missed important deprecation warnings from browser
+  - Shadow DOM declarative warnings now captured: "Found declarative shadowrootmode attribute..."
+  - Other deprecation warnings like "setHTMLUnsafe() or parseHTMLUnsafe()" now logged
+  - Maintains backward compatibility with existing duplicate prevention
+
 ## [0.4.65] - 2025-09-22
 
 ### Added

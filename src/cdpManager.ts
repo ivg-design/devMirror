@@ -35,6 +35,9 @@ export class CDPManager {
     private maxReconnectAttempts: number = 10;
     private reconnectDelay: number = 5000; // 5 seconds between attempts
 
+    // Configuration
+    private config!: DevMirrorConfig;
+
     // Event handlers
     private consoleHandler!: ConsoleEventHandler;
     private networkHandler!: NetworkEventHandler;
@@ -46,6 +49,9 @@ export class CDPManager {
     }
 
     async start(config: DevMirrorConfig): Promise<void> {
+        // Store config for later use
+        this.config = config;
+
         // Handle CEF mode differently - open browser to debug interface
         if (config.mode === 'cef' && config.cefPort) {
             return this.startCEFMode(config);
@@ -79,7 +85,7 @@ export class CDPManager {
         await this.logWriter.initialize();
 
         // Initialize event handlers
-        this.consoleHandler = new ConsoleEventHandler(this.logWriter);
+        this.consoleHandler = new ConsoleEventHandler(this.logWriter, config);
         this.networkHandler = new NetworkEventHandler(this.logWriter);
         this.pageHandler = new PageEventHandler(this.logWriter);
 
@@ -207,8 +213,13 @@ export class CDPManager {
 
         await this.client.send('Runtime.enable');
         await this.client.send('Network.enable');
-        // Don't enable Log domain - causes duplicate console events
-        // await this.client.send('Log.enable');
+
+        // Conditionally enable Log domain for deprecation warnings
+        if (this.config?.captureDeprecationWarnings) {
+            await this.client.send('Log.enable');
+            console.log('   ✅ Log domain enabled for deprecation warnings (Shadow DOM, etc.)');
+        }
+
         await this.client.send('Security.enable');
         await this.client.send('Page.enable');
 
@@ -537,7 +548,7 @@ export class CDPManager {
             await this.logWriter.initialize();
 
             // Initialize event handlers
-            this.consoleHandler = new ConsoleEventHandler(this.logWriter);
+            this.consoleHandler = new ConsoleEventHandler(this.logWriter, config);
             this.networkHandler = new NetworkEventHandler(this.logWriter);
             this.pageHandler = new PageEventHandler(this.logWriter);
         }

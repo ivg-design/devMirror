@@ -9,12 +9,16 @@ export class CEFBridge {
     private page: any = null;
     private logWriter: LogWriter;
     private puppeteer: any;
+    private config!: DevMirrorConfig;
 
     constructor() {
         this.logWriter = new LogWriter('');
     }
 
     async start(config: DevMirrorConfig): Promise<void> {
+        // Store config for later use
+        this.config = config;
+
         // Try to load puppeteer-core from multiple locations
         let puppeteerLoaded = false;
 
@@ -163,12 +167,25 @@ export class CEFBridge {
         });
 
         client.on('Log.entryAdded', (event: any) => {
+            const entry = event.entry;
+            const source = entry.source || 'cef';
+
+            // Skip deprecation warnings unless explicitly enabled
+            if (source === 'deprecation' && !this.config?.captureDeprecationWarnings) {
+                return;
+            }
+
+            // Skip security warnings to avoid noise
+            if (source === 'security') {
+                return;
+            }
+
             this.logWriter.write({
                 type: 'browser',
-                level: event.entry.level,
-                message: event.entry.text,
+                level: entry.level,
+                message: `[${source.toUpperCase()}] ${entry.text}`,
                 source: 'CEF',
-                timestamp: event.entry.timestamp * 1000
+                timestamp: entry.timestamp * 1000
             });
         });
 

@@ -15,7 +15,7 @@
     "devtools protocol",
     "console capture"
   ],
-  "version": "0.4.65",
+  "version": "0.4.66",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
@@ -150,6 +150,11 @@
           "type": "boolean",
           "default": false,
           "description": "Automatically open browser to CEF debug interface when enabled (CEF mode only)"
+        },
+        "devmirror.captureDeprecationWarnings": {
+          "type": "boolean",
+          "default": true,
+          "description": "Capture browser deprecation warnings like declarative Shadow DOM messages"
         }
       }
     }

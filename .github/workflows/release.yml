@@ -1,0 +1,104 @@
+name: Create Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 0.4.66)'
+        required: true
+        type: string
+      create_tag:
+        description: 'Create git tag'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Compile TypeScript
+      run: npm run compile
+
+    - name: Build VSIX package
+      run: npx vsce package
+
+    - name: Get version info
+      id: version
+      run: |
+        if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+          VERSION="${{ github.event.inputs.version }}"
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+        else
+          VERSION=${GITHUB_REF#refs/tags/}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=${VERSION#v}" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Create/Update git tag (manual dispatch)
+      if: github.event_name == 'workflow_dispatch' && github.event.inputs.create_tag == 'true'
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git tag -a "${{ steps.version.outputs.version }}" -m "Release ${{ steps.version.outputs.version }}"
+        git push origin "${{ steps.version.outputs.version }}"
+
+    - name: Extract changelog for version
+      id: changelog
+      run: |
+        VERSION="${{ steps.version.outputs.version_number }}"
+
+        # Extract changelog section for this version
+        CHANGELOG_SECTION=$(awk "
+          /^## \[$VERSION\]/ { found=1; next }
+          /^## \[/ && found { exit }
+          found && /^###/ { print \$0; next }
+          found && /^-/ { print \$0; next }
+          found && NF > 0 { print \$0 }
+        " CHANGELOG.md)
+
+        if [ -z "$CHANGELOG_SECTION" ]; then
+          CHANGELOG_SECTION="Release ${{ steps.version.outputs.version }}"
+        fi
+
+        # Save to file for GitHub release
+        echo "$CHANGELOG_SECTION" > release_notes.md
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        release_name: DevMirror ${{ steps.version.outputs.version }}
+        body_path: release_notes.md
+        draft: false
+        prerelease: false
+
+    - name: Upload VSIX to Release
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./devmirror-${{ steps.version.outputs.version_number }}.vsix
+        asset_name: devmirror-${{ steps.version.outputs.version_number }}.vsix
+        asset_content_type: application/zip

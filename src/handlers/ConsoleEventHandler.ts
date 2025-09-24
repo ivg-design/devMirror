@@ -1,10 +1,13 @@
 import { LogWriter } from '../logWriter';
+import { DevMirrorConfig } from '../configHandler';
 
 export class ConsoleEventHandler {
     private logWriter: LogWriter;
+    private config: DevMirrorConfig;
 
-    constructor(logWriter: LogWriter) {
+    constructor(logWriter: LogWriter, config: DevMirrorConfig) {
         this.logWriter = logWriter;
+        this.config = config;
     }
 
     /**
@@ -108,7 +111,12 @@ export class ConsoleEventHandler {
         const source = entry.source || 'other';
 
         // Skip certain log sources to avoid noise
-        if (source === 'security' || source === 'deprecation') {
+        if (source === 'security') {
+            return;
+        }
+
+        // Skip deprecation warnings unless explicitly enabled
+        if (source === 'deprecation' && !this.config.captureDeprecationWarnings) {
             return;
         }
 

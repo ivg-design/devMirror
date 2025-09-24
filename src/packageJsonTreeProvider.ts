@@ -284,6 +284,9 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
                 }
                 // Add autoOpenBrowser from VS Code settings
                 defaultConfig.autoOpenBrowser = vscode.workspace.getConfiguration('devmirror').get('autoOpenBrowser', false);
+
+                // Add captureDeprecationWarnings from VS Code settings
+                defaultConfig.captureDeprecationWarnings = vscode.workspace.getConfiguration('devmirror').get('captureDeprecationWarnings', true);
             } else {
                 // Regular CDP mode
                 defaultConfig.mode = 'cdp';

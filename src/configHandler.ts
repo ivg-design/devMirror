@@ -9,6 +9,7 @@ export interface DevMirrorConfig {
     cefPort?: number;
     autoDetectPort?: boolean;  // Auto-detect running dev server
     autoOpenBrowser?: boolean;  // Auto-open browser in CEF mode
+    captureDeprecationWarnings?: boolean;  // Capture browser deprecation warnings (Shadow DOM, etc.)
     throttle?: {
         maxPerSecond: number;
         suppressAfter: number;
@@ -24,6 +25,7 @@ export class ConfigHandler {
         // For CEF mode, uncomment and set your debug port:
         // mode: 'cef',
         // cefPort: 8860,  // Your CEF debug port from .debug file
+        captureDeprecationWarnings: true,  // Enable to capture Shadow DOM and other deprecation warnings
         throttle: {
             maxPerSecond: 100,
             suppressAfter: 100
