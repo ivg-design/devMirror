@@ -2,6 +2,26 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.67] - 2025-09-24
+
+### Added
+- **Auto-Installation for puppeteer-core** - DevMirror now automatically installs puppeteer-core when missing
+  - Added to both CEFBridge and CDPManager
+  - Smart detection tries project node_modules first, then installs as needed
+  - Provides clear installation feedback and fallback instructions
+
+### Fixed
+- **CLI Path Resolution** - Fixed VS Code extension CLI path from `/dist/cli.js` to `/out/cli.js`
+  - Updated webpack output directory for compatibility
+  - Resolves "CLI not found" errors when running mirror scripts
+  - Maintains consistent build output structure
+
+### Improved
+- **Dual Dependency Architecture** - Enhanced smart loading logic
+  - NPM users get full puppeteer-core capabilities (~324 files)
+  - VS Code users get optimized minimal bundle (~37 files)
+  - 96% extension file count reduction with no functionality loss
+
 ## [0.4.66] - 2025-09-24
 
 ### Added
