@@ -29,7 +29,24 @@ export class PackageJsonTreeProvider implements vscode.TreeDataProvider<PackageJ
 
     async findPackageJsonFiles(): Promise<void> {
         const pattern = new vscode.RelativePattern(this.workspaceRoot, '**/package.json');
-        const files = await vscode.workspace.findFiles(pattern, '**/node_modules/**');
+        // Exclude common cache directories and build outputs that might contain package.json files
+        const excludePatterns = [
+            '**/node_modules/**',
+            '**/.cache/**',
+            '**/.vite/**',
+            '**/.parcel-cache/**',
+            '**/.next/**',
+            '**/.nuxt/**',
+            '**/dist/**',
+            '**/build/**',
+            '**/.git/**',
+            '**/.svn/**',
+            '**/.hg/**',
+            '**/temp/**',
+            '**/tmp/**'
+        ].join(',');
+
+        const files = await vscode.workspace.findFiles(pattern, `{${excludePatterns}}`);
         this.packageJsonFiles = files.map(uri => uri.fsPath);
     }
 

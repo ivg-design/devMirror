@@ -3,6 +3,7 @@ import { DevMirrorConfig } from './configHandler';
 import { ConsoleEventHandler } from './handlers/ConsoleEventHandler';
 import { NetworkEventHandler } from './handlers/NetworkEventHandler';
 import { PageEventHandler } from './handlers/PageEventHandler';
+import { ViteErrorHandler } from './handlers/ViteErrorHandler';
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as os from 'os';
@@ -42,6 +43,7 @@ export class CDPManager {
     private consoleHandler!: ConsoleEventHandler;
     private networkHandler!: NetworkEventHandler;
     private pageHandler!: PageEventHandler;
+    private viteHandler!: ViteErrorHandler;
 
     constructor() {
         // Don't initialize LogWriter here - wait for config
@@ -106,13 +108,14 @@ export class CDPManager {
             }
         }
 
-        this.logWriter = new LogWriter(config.outputDir);
+        this.logWriter = new LogWriter(config.outputDir, config);
         await this.logWriter.initialize();
 
         // Initialize event handlers
         this.consoleHandler = new ConsoleEventHandler(this.logWriter, config);
         this.networkHandler = new NetworkEventHandler(this.logWriter);
-        this.pageHandler = new PageEventHandler(this.logWriter);
+        this.pageHandler = new PageEventHandler(this.logWriter, config);
+        this.viteHandler = new ViteErrorHandler(this.logWriter, config);
 
         // Auto-detect port if URL not provided or autoDetectPort is true
         let targetUrl = config.url;
@@ -239,11 +242,9 @@ export class CDPManager {
         await this.client.send('Runtime.enable');
         await this.client.send('Network.enable');
 
-        // Conditionally enable Log domain for deprecation warnings
-        if (this.config?.captureDeprecationWarnings) {
-            await this.client.send('Log.enable');
-            console.log('   ✅ Log domain enabled for deprecation warnings (Shadow DOM, etc.)');
-        }
+        // Enable both Log and Console domains to capture all possible warning sources
+        await this.client.send('Log.enable');
+        await this.client.send('Console.enable');
 
         await this.client.send('Security.enable');
         await this.client.send('Page.enable');
@@ -251,6 +252,14 @@ export class CDPManager {
         // Set up console capture for CDP mode
         this.client.on('Runtime.consoleAPICalled', (event: any) => {
             this.consoleHandler.handleConsoleAPI(event);
+
+            // Check for Vite errors in console messages
+            if (event.type === 'error' || event.type === 'warn') {
+                const message = event.args?.map((arg: any) => arg.value || arg.description || '').join(' ');
+                if (message) {
+                    this.viteHandler.handleConsoleError(message);
+                }
+            }
         });
 
         this.client.on('Runtime.exceptionThrown', (event: any) => {
@@ -275,6 +284,15 @@ export class CDPManager {
                 requestInitiators.delete(event.requestId);
             }
             this.networkHandler.handleLoadingFailed(event);
+
+            // Check for Vite module loading errors
+            if (event.type && event.errorText && event.response) {
+                this.viteHandler.handleNetworkError(
+                    event.response.url || 'unknown',
+                    event.response.status || 0,
+                    event.errorText
+                );
+            }
         });
 
         this.client.on('Network.responseReceived', (event: any) => {
@@ -289,6 +307,22 @@ export class CDPManager {
 
         this.client.on('Log.entryAdded', (event: any) => {
             this.consoleHandler.handleLogEntry(event);
+
+            // Check for Vite build errors in log entries
+            if (event.entry && (event.entry.level === 'error' || event.entry.level === 'warning')) {
+                this.viteHandler.handleLogEntry(event.entry.level, event.entry.source, event.entry.text);
+            }
+        });
+
+        this.client.on('Console.messageAdded', (event: any) => {
+            // Handle Console.messageAdded events (legacy but might contain warnings)
+            if (event.message) {
+                this.logWriter.write({
+                    type: 'console',
+                    message: `[CONSOLE-LEGACY] ${event.message.text || event.message.source || 'unknown'}`,
+                    timestamp: Date.now()
+                });
+            }
         });
 
         this.client.on('Security.securityStateChanged', (event: any) => {
@@ -520,7 +554,6 @@ export class CDPManager {
 
         // Close WebSocket immediately to stop receiving messages
         if (this.activeWebSocket) {
-            console.log('   Closing WebSocket connection...');
             try {
                 this.activeWebSocket.removeAllListeners?.();
                 this.activeWebSocket.close();
@@ -544,7 +577,6 @@ export class CDPManager {
 
         // Close browser if in browser mode
         if (this.browser) {
-            console.log('   Closing browser...');
             try {
                 await this.browser.close();
             } catch (e) {
@@ -555,7 +587,6 @@ export class CDPManager {
 
         // Close log writer to prevent empty file creation
         if (this.logWriter) {
-            console.log('   Closing log writer...');
             await this.logWriter.close();
         }
 
@@ -569,13 +600,14 @@ export class CDPManager {
         // Initialize LogWriter ONCE at the beginning
         if (!this.logWriter) {
             const outputDir = config.outputDir || './devmirror-logs';
-            this.logWriter = new LogWriter(outputDir);
+            this.logWriter = new LogWriter(outputDir, config);
             await this.logWriter.initialize();
 
             // Initialize event handlers
             this.consoleHandler = new ConsoleEventHandler(this.logWriter, config);
             this.networkHandler = new NetworkEventHandler(this.logWriter);
-            this.pageHandler = new PageEventHandler(this.logWriter);
+            this.pageHandler = new PageEventHandler(this.logWriter, config);
+            this.viteHandler = new ViteErrorHandler(this.logWriter, config);
         }
 
         console.log('🎨 DevMirror Active (CEF Debug Mode - Direct Connection)');
@@ -881,6 +913,7 @@ export class CDPManager {
     }
 
     private captureConsoleEvent(method: string, params: any): void {
+        // Universal CDP event capture for comprehensive logging
         if (!this.logWriter) {
             console.log('   ⚠️ LogWriter not ready for event:', method);
             return;

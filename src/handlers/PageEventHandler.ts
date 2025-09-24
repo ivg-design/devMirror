@@ -1,16 +1,21 @@
 import { LogWriter } from '../logWriter';
+import { DevMirrorConfig } from '../configHandler';
 
 export class PageEventHandler {
     private logWriter: LogWriter;
+    private config: DevMirrorConfig;
 
-    constructor(logWriter: LogWriter) {
+    constructor(logWriter: LogWriter, config: DevMirrorConfig) {
         this.logWriter = logWriter;
+        this.config = config;
     }
 
     /**
      * Handle page navigation
      */
     handleFrameNavigated(event: any): void {
+        if (!this.config.lifecycle?.captureNavigation) return;
+
         const frame = event.frame;
         if (frame.parentId) return; // Only log main frame navigations
 
@@ -29,6 +34,8 @@ export class PageEventHandler {
      * Handle DOM content loaded
      */
     handleDomContentEventFired(): void {
+        if (!this.config.lifecycle?.captureNavigation) return;
+
         this.logWriter.write({
             type: 'lifecycle',
             message: '════════════ DOM Content Loaded ════════════',
@@ -40,6 +47,8 @@ export class PageEventHandler {
      * Handle page fully loaded
      */
     handleLoadEventFired(): void {
+        if (!this.config.lifecycle?.captureNavigation) return;
+
         this.logWriter.write({
             type: 'lifecycle',
             message: '════════════ Page Loaded ════════════',
@@ -52,6 +61,8 @@ export class PageEventHandler {
      * Handle page lifecycle state changes
      */
     handleLifecycleEvent(event: any): void {
+        if (!this.config.lifecycle?.capturePerformance) return;
+
         const name = event.name;
         const timestamp = event.timestamp;
 
@@ -69,6 +80,8 @@ export class PageEventHandler {
      * Handle JavaScript dialogs (alert, confirm, prompt)
      */
     handleJavaScriptDialogOpening(event: any): void {
+        if (!this.config.lifecycle?.captureDialogs) return;
+
         const type = event.type;
         const message = event.message;
 
@@ -83,6 +96,8 @@ export class PageEventHandler {
      * Handle window open requests
      */
     handleWindowOpen(event: any): void {
+        if (!this.config.lifecycle?.captureDialogs) return;
+
         const url = event.url;
         const windowName = event.windowName || 'unnamed';
 

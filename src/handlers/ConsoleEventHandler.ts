@@ -23,6 +23,7 @@ export class ConsoleEventHandler {
             const args = params.args || [];
             const type = params.type || 'log';
 
+
             // Extract source location if available
             let source = '';
             if (params.stackTrace?.callFrames?.[0]) {
@@ -55,7 +56,9 @@ export class ConsoleEventHandler {
 
                 this.logWriter.write({
                     type: logType,
-                    message: fullMessage,
+                    method: type, // Pass the original console method (log, warn, error, etc.)
+                    message: source + message, // Just the core message without stack trace
+                    stack: params.stackTrace?.callFrames?.length > 1 ? this.formatStackTrace(params.stackTrace, true) : undefined,
                     timestamp: Date.now()
                 });
             }
@@ -110,13 +113,18 @@ export class ConsoleEventHandler {
         const level = entry.level || 'verbose';
         const source = entry.source || 'other';
 
+
         // Skip certain log sources to avoid noise
         if (source === 'security') {
             return;
         }
 
         // Skip deprecation warnings unless explicitly enabled
-        if (source === 'deprecation' && !this.config.captureDeprecationWarnings) {
+        // Note: Shadow DOM warnings come as source="other", not source="deprecation"
+        const isDeprecationWarning = (source === 'deprecation') ||
+                                    (source === 'other' && entry.text?.toLowerCase().includes('declarative shadowrootmode'));
+
+        if (isDeprecationWarning && !this.config.captureDeprecationWarnings) {
             return;
         }
 
@@ -129,9 +137,22 @@ export class ConsoleEventHandler {
 
         const type = typeMap[level] || 'console';
 
+        // Build message with stack trace if available
+        let fullMessage = `[${source.toUpperCase()}] ${entry.text}`;
+
+        // Add stack trace for Log.entryAdded events (similar to Runtime.consoleAPICalled)
+        if (entry.stackTrace?.callFrames?.length > 0) {
+            const stackTrace = this.formatStackTrace(entry.stackTrace, false);
+            if (stackTrace) {
+                fullMessage += '\n' + stackTrace;
+            }
+        }
+
         this.logWriter.write({
             type: type,
-            message: `[${source.toUpperCase()}] ${entry.text}`,
+            source: source,
+            message: entry.text, // Just the core message text
+            stack: entry.stackTrace?.callFrames?.length > 0 ? this.formatStackTrace(entry.stackTrace, false) : undefined,
             timestamp: Date.now()
         });
     }

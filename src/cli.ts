@@ -48,6 +48,18 @@ async function main() {
     const waitMode = args.includes('--wait');
     const companionMode = args.includes('--companion');
 
+    // Parse VS Code settings overrides
+    const settingsOverrides = {
+        lifecycle: {
+            captureNavigation: !args.includes('--no-navigation'),
+            captureSession: !args.includes('--no-session'),
+            capturePerformance: args.includes('--with-performance'),
+            captureDialogs: args.includes('--with-dialogs')
+        },
+        captureDeprecationWarnings: !args.includes('--no-deprecation-warnings'),
+        captureViteErrors: args.includes('--with-vite-errors')
+    };
+
     // If companion mode, delegate to companion script
     if (companionMode) {
         console.log('🤝 Running in companion mode...');
@@ -77,6 +89,18 @@ async function main() {
     try {
         config = await ConfigHandler.load(configPath);
         console.log('✅ Loaded configuration from:', configPath);
+
+        // Apply VS Code settings overrides
+        config = {
+            ...config,
+            ...settingsOverrides,
+            lifecycle: {
+                ...config.lifecycle,
+                ...settingsOverrides.lifecycle
+            }
+        };
+
+        console.log('✅ Applied VS Code settings overrides');
     } catch (error) {
         console.error('❌ Failed to load configuration:', error);
         process.exit(1);
@@ -134,16 +158,7 @@ async function main() {
             timestamp: Date.now()
         };
 
-        // Write activation file for all VS Code windows to detect
-        const activationFile = path.join(config.outputDir, '.devmirror-activation.json');
-        try {
-            fs.writeFileSync(activationFile, JSON.stringify(activationData, null, 2));
-            console.log('📝 Activation file written for VS Code windows');
-        } catch (e: any) {
-            console.log('📝 Could not write activation file:', e.message || e);
-        }
-
-        // Also try HTTP for backward compatibility
+        // Send activation via HTTP to VS Code extension
         const data = JSON.stringify(activationData);
         const options = {
             hostname: '127.0.0.1',

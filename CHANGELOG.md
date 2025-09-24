@@ -4,17 +4,51 @@ All notable changes to the DevMirror VS Code extension will be documented in thi
 
 ## [0.4.69] - 2025-09-24
 
+### Added
+- **Lifecycle Event Configuration** - Granular control over lifecycle logging
+  - `devmirror.lifecycle.captureNavigation` - Control page navigation events (default: true)
+  - `devmirror.lifecycle.captureSession` - Control session and connection events (default: true)
+  - `devmirror.lifecycle.capturePerformance` - Control performance timing events (default: false)
+  - `devmirror.lifecycle.captureDialogs` - Control JavaScript dialogs and window events (default: false)
+  - Settings are automatically passed from VS Code to CLI via command line arguments
+
+- **Vite Error Capture** - Advanced error detection for Vite development
+  - `devmirror.captureViteErrors` - Capture Vite-specific build and runtime errors (default: true)
+  - Detects module loading failures, build errors, and syntax errors from Vite
+  - Distinctive `🔥 VITE` labeling for Vite-related errors in logs
+  - Monitors console, network, and log domains for Vite error patterns
+
 ### Fixed
-- **Console Warning Capture** - Fixed missing `console.warn()` messages
-  - Removed incorrect filtering of deprecation warnings from `Runtime.consoleAPICalled`
-  - DevMirror now captures 100% of console output as designed (log, info, warn, error, debug)
-  - Shadow DOM and other user-generated warnings now properly captured with full stack traces
-  - `captureDeprecationWarnings` config now only affects browser-generated warnings (`Log.entryAdded`)
+- **Browser Deprecation Warning Capture** - Fixed missing browser-generated warnings
+  - Fixed stack trace display in log files (were embedded in messages, now properly formatted)
+  - Eliminated duplicate console entries ("CONSOLE-LEGACY" issue)
+  - Browser warnings now properly labeled with source (e.g., `[OTHER]`, `[DEPRECATION]`)
+  - Separated user console calls from browser-generated log messages in output
+
+- **DevMirror Scripts Panel** - Fixed cache file detection issue
+  - Excluded common cache directories (.cache, .vite, .parcel-cache, .next, .nuxt, dist, build, etc.)
+  - Scripts panel now only shows legitimate package.json files, not cached artifacts
+
+- **Activation System Simplification** - Removed redundant file-based activation
+  - Eliminated `.devmirror-activation.json` file creation and watching
+  - Now uses HTTP-only activation (port 37240) for cleaner, more reliable IPC
+  - Reduced complexity and potential file system conflicts
+
+### Changed
+- **Log Output Format** - Improved console message categorization
+  - User console calls: `[LOG]`, `[WARN]`, `[ERROR]` etc.
+  - Browser messages: `[OTHER]`, `[DEPRECATION]`, `[SECURITY]` etc.
+  - Vite errors: `🔥 VITE` with descriptive error details
+  - Stack traces now appear as properly indented blocks instead of inline text
+  - Removed duplicate source information in log entries
 
 ### Technical
-- Restored core principle: DevMirror captures ALL console messages regardless of content
-- Distinguished between user console calls (Runtime domain) vs browser warnings (Log domain)
-- Fixed logic error that was filtering user-generated deprecation warnings
+- Enhanced configuration system to merge VS Code settings with config files
+- Added `ViteErrorHandler` for intelligent Vite error pattern detection
+- Fixed `ConsoleEventHandler` to pass stack traces separately to `LogWriter`
+- Updated `LogWriter` to handle both `method` (user console) and `source` (browser) fields
+- Resolved `Runtime.consoleAPICalled` vs `Log.entryAdded` event handling conflicts
+- Improved `PackageJsonTreeProvider` file filtering logic for better accuracy
 
 ## [0.4.68] - 2025-09-24
 

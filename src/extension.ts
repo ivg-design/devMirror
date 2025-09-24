@@ -21,8 +21,6 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Function to handle activation messages
     const handleActivation = (args: any) => {
-        console.log('[DevMirror] Handling activation:', args);
-        console.log('[DevMirror] Current workspace folders:', vscode.workspace.workspaceFolders?.map(f => f.uri.fsPath));
         statusMonitor.activate(args);
     };
 
@@ -31,7 +29,6 @@ export function activate(context: vscode.ExtensionContext) {
     let serverStarted = false;
 
     const server = http.createServer((req, res) => {
-        console.log(`[DevMirror] HTTP request received: ${req.method} ${req.url}`);
         if (req.method === 'POST' && req.url === '/activate') {
             let body = '';
             req.on('data', chunk => body += chunk.toString());
@@ -74,13 +71,11 @@ export function activate(context: vscode.ExtensionContext) {
 
     // Try to start server
     server.listen(PORT, '127.0.0.1', () => {
-        console.log(`[DevMirror] IPC server listening on port ${PORT} (primary window)`);
         serverStarted = true;
     });
 
     server.on('error', (err: any) => {
         if (err.code === 'EADDRINUSE') {
-            console.log(`[DevMirror] Port ${PORT} already in use - this is a secondary window`);
             // Don't try to start another server, just rely on workspace filtering
             serverStarted = false;
         } else {
@@ -88,49 +83,8 @@ export function activate(context: vscode.ExtensionContext) {
         }
     });
 
-    // Watch for activation files in any devmirror-logs directory
-    // This ensures all windows get notified regardless of which one has the HTTP server
-    const watchActivationFiles = () => {
-        const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) return;
-
-        workspaceFolders.forEach(folder => {
-            const activationPattern = new vscode.RelativePattern(
-                folder,
-                '**/devmirror-logs/.devmirror-activation.json'
-            );
-
-            const activationWatcher = vscode.workspace.createFileSystemWatcher(activationPattern);
-
-            // Watch for new or changed activation files
-            const handleActivationFile = async (uri: vscode.Uri) => {
-                try {
-                    const fs = require('fs');
-                    const content = fs.readFileSync(uri.fsPath, 'utf8');
-                    const args = JSON.parse(content);
-                    console.log('[DevMirror] Activation file detected:', args);
-                    handleActivation(args);
-                } catch (e) {
-                    console.log('[DevMirror] Failed to read activation file:', e);
-                }
-            };
-
-            activationWatcher.onDidCreate(handleActivationFile);
-            activationWatcher.onDidChange(handleActivationFile);
-
-            context.subscriptions.push(activationWatcher);
-
-            // Check for existing activation file on startup
-            const fs = require('fs');
-            const activationPath = path.join(folder.uri.fsPath, 'devmirror-logs', '.devmirror-activation.json');
-            if (fs.existsSync(activationPath)) {
-                handleActivationFile(vscode.Uri.file(activationPath));
-            }
-        });
-    };
-
-    // Set up activation file watching
-    watchActivationFiles();
+    // Activation is handled exclusively via HTTP server on port 37240
+    // No file-based activation needed since HTTP is more reliable
 
     // Configuration for auto-refresh and auto-fold
     const config = vscode.workspace.getConfiguration('devmirror');
@@ -152,7 +106,6 @@ export function activate(context: vscode.ExtensionContext) {
     // Set up the log change callback (for when status monitor is active)
     statusMonitor.onLogChange(() => {
         const logPath = statusMonitor.getCurrentLogPath();
-        console.log('[DevMirror] Status monitor log change detected, path:', logPath, 'autoRefresh:', autoRefresh, 'autoFold:', autoFold);
         if (logPath && autoRefresh) {
             refreshAndFold(vscode.Uri.file(logPath));
         }
@@ -199,8 +152,7 @@ export function activate(context: vscode.ExtensionContext) {
                             if (currentEditor && currentEditor.document.uri.fsPath === uri.fsPath) {
                                 // Use foldAll to fold all log entries
                                 await vscode.commands.executeCommand('editor.foldAll');
-                                console.log('[DevMirror] Applied foldAll on refresh');
-                            }
+                                }
                         } catch (e) {
                             console.log('[DevMirror] Failed to fold on refresh:', e);
                         }
@@ -248,7 +200,6 @@ export function activate(context: vscode.ExtensionContext) {
 
             // Watch for changes to log files
             watcher.onDidChange((uri) => {
-                console.log('[DevMirror] File watcher detected change:', uri.fsPath);
                 if (autoRefresh) {
                     refreshAndFold(uri);
                 }
@@ -264,7 +215,6 @@ export function activate(context: vscode.ExtensionContext) {
                       editor.document.uri.fsPath.includes('devmirror-logs'))) {
             // Apply folding when switching to or opening log files if enabled
             if (autoFold) {
-                console.log('[DevMirror] Editor changed to log file, will fold:', editor.document.uri.fsPath);
 
                 // The editor is ALREADY active - no need to call showTextDocument!
                 // That was causing the recursion.
@@ -272,7 +222,6 @@ export function activate(context: vscode.ExtensionContext) {
                     try {
                         // Simply fold the already-active editor
                         await vscode.commands.executeCommand('editor.foldAll');
-                        console.log('[DevMirror] Applied foldAll to:', editor.document.uri.fsPath);
                     } catch (e) {
                         console.log('[DevMirror] Failed to fold:', e);
                     }
