@@ -125,6 +125,12 @@ jobs:
       run: |
         echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
 
+    - name: Verify NPM authentication
+      run: |
+        npm whoami
+        echo "Checking package permissions..."
+        npm access ls-packages --json || echo "Access check failed"
+
     - name: Publish to NPM
       run: |
         cd npm-package
