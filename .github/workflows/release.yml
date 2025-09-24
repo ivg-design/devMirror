@@ -29,7 +29,10 @@ jobs:
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '20'
+
+    - name: Clear npm cache
+      run: npm cache clean --force
 
     - name: Install dependencies
       run: npm install
@@ -37,8 +40,11 @@ jobs:
     - name: Compile TypeScript
       run: npm run compile
 
+    - name: Install vsce globally
+      run: npm install -g @vscode/vsce
+
     - name: Build VSIX package
-      run: npx vsce package
+      run: vsce package
 
     - name: Get version info
       id: version
@@ -83,22 +89,13 @@ jobs:
         echo "$CHANGELOG_SECTION" > release_notes.md
 
     - name: Create GitHub Release
-      uses: actions/create-release@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ steps.version.outputs.version }}
-        release_name: DevMirror ${{ steps.version.outputs.version }}
+        name: DevMirror ${{ steps.version.outputs.version }}
         body_path: release_notes.md
+        files: ./devmirror-${{ steps.version.outputs.version_number }}.vsix
         draft: false
         prerelease: false
-
-    - name: Upload VSIX to Release
-      uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./devmirror-${{ steps.version.outputs.version_number }}.vsix
-        asset_name: devmirror-${{ steps.version.outputs.version_number }}.vsix
-        asset_content_type: application/zip
