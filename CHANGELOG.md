@@ -2,6 +2,14 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.80] - 2025-09-25
+
+### Fixed
+- **Package Dependencies**: Rebuilt extension package with proper node_modules inclusion (fixed from 0.4.79)
+
+### Note
+- Version 0.4.79 was accidentally published without dependencies - use 0.4.80 instead
+
 ## [0.4.79] - 2025-09-25
 
 ### Fixed
