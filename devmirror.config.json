@@ -1,0 +1,5 @@
+{
+  "mode": "cdp",
+  "url": "http://localhost:8765/test-array-format.html",
+  "outputDir": "./devmirror-logs"
+}

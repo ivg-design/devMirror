@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Array/Object Format Test</title>
+</head>
+<body>
+    <h1>Testing DevMirror Array/Object Formatting</h1>
+    <button id="test">Run Tests</button>
+
+    <script>
+        document.getElementById('test').addEventListener('click', () => {
+            console.log('Testing array formatting:');
+
+            // Test 1: Simple array
+            const simpleArray = [1, 2, 3, 4, 5];
+            console.log('Simple array:', simpleArray);
+
+            // Test 2: Array with objects
+            const arrayWithObjects = [
+                {id: 1, name: 'Alice', age: 30},
+                {id: 2, name: 'Bob', age: 25},
+                {id: 3, name: 'Charlie', age: 35}
+            ];
+            console.log('Array with objects:', arrayWithObjects);
+
+            // Test 3: Large array (like the one in the logs)
+            const largeArray = [];
+            for (let i = 0; i < 45; i++) {
+                largeArray.push({
+                    index: i,
+                    value: `Item ${i}`,
+                    timestamp: Date.now()
+                });
+            }
+            console.table('Large array (TABLE):', largeArray);
+
+            // Test 4: Nested object
+            const nestedObject = {
+                level1: {
+                    level2: {
+                        level3: {
+                            data: 'Deep nested value'
+                        }
+                    },
+                    array: [1, 2, 3]
+                },
+                count: 42
+            };
+            console.log('Nested object:', nestedObject);
+
+            // Test 5: Object with many properties
+            const bigObject = {};
+            for (let i = 0; i < 30; i++) {
+                bigObject[`prop_${i}`] = `Value ${i}`;
+            }
+            console.log('Object with many properties:', bigObject);
+
+            // Test with stack trace
+            console.group('Group with stack trace');
+            console.log('This should have a stack trace');
+            console.trace('Test trace');
+            console.groupEnd();
+        });
+    </script>
+</body>
+</html>

@@ -169,11 +169,46 @@ export class ConsoleEventHandler {
 
             // Handle objects with preview (synchronous)
             if (arg.type === 'object' && arg.preview?.properties) {
-                const props = arg.preview.properties
-                    .map((p: any) => `${p.name}: ${p.value || p.type}`)
-                    .join(', ');
-                const overflow = arg.preview.overflow ? ', ...' : '';
-                return `${arg.className || 'Object'} {${props}${overflow}}`;
+                // Build a proper object structure from preview
+                const obj: any = {};
+                for (const prop of arg.preview.properties) {
+                    // For array indices, use numeric keys
+                    const key = /^\d+$/.test(prop.name) ? parseInt(prop.name) : prop.name;
+
+                    // Handle different property types
+                    if (prop.value !== undefined) {
+                        obj[key] = prop.value;
+                    } else if (prop.type === 'object') {
+                        // Nested object - show type and className if available
+                        obj[key] = prop.subtype || prop.className || 'Object';
+                    } else {
+                        obj[key] = prop.type;
+                    }
+                }
+
+                // Format as indented JSON
+                try {
+                    const formatted = JSON.stringify(obj, null, 2);
+                    const lines = formatted.split('\n');
+                    // Add 2 spaces to ALL lines except first for proper indentation
+                    const indented = lines.map((line, i) => {
+                        return i === 0 ? line : '  ' + line;
+                    }).join('\n');
+
+                    // Add class name prefix if it's not a plain object or array
+                    if (arg.className && arg.className !== 'Object' && arg.className !== 'Array') {
+                        return `${arg.className} ${indented}`;
+                    }
+
+                    return indented + (arg.preview.overflow ? '\n  // ... more items' : '');
+                } catch {
+                    // Fallback to single line if formatting fails
+                    const props = arg.preview.properties
+                        .map((p: any) => `${p.name}: ${p.value || p.type}`)
+                        .join(', ');
+                    const overflow = arg.preview.overflow ? ', ...' : '';
+                    return `${arg.className || 'Object'} {${props}${overflow}}`;
+                }
             }
 
             // Handle description (including JSON objects and arrays)

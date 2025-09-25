@@ -162,6 +162,11 @@ export class LogWriter {
         if (!stack) return '';
 
         if (typeof stack === 'string') {
+            // If the stack is already formatted (contains "at " patterns), use as-is
+            // Otherwise add indentation
+            if (stack.includes('    at ') || stack.includes('\tat ')) {
+                return stack;
+            }
             return stack.split('\n')
                 .map(line => `    ${line}`)
                 .join('\n');
