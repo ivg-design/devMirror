@@ -70,14 +70,20 @@ jobs:
       run: |
         VERSION="${{ steps.version.outputs.version }}"
 
-        # Extract changelog section for this version
+        # Extract changelog section for this version (try both case variations)
         CHANGELOG_SECTION=$(awk "
           /^## \[$VERSION\]/ { found=1; next }
           /^## \[/ && found { exit }
           found && /^###/ { print \$0; next }
           found && /^-/ { print \$0; next }
           found && NF > 0 { print \$0 }
-        " changelog.md)
+        " CHANGELOG.md 2>/dev/null || awk "
+          /^## \[$VERSION\]/ { found=1; next }
+          /^## \[/ && found { exit }
+          found && /^###/ { print \$0; next }
+          found && /^-/ { print \$0; next }
+          found && NF > 0 { print \$0 }
+        " changelog.md 2>/dev/null || echo "")
 
         if [ -z "$CHANGELOG_SECTION" ]; then
           # If no specific changelog, get latest commits
