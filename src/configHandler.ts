@@ -20,7 +20,8 @@ export interface DevMirrorConfig {
         logExceptions?: boolean;  // Log detailed exception data
         logConsoleAPI?: boolean;  // Log raw console API calls
         logLogEntries?: boolean;  // Log raw Log.entryAdded events
-        logToFile?: boolean;  // Save debug logs to a separate file
+        logToFile?: boolean;  // Save debug logs to current.log
+        logToConsole?: boolean;  // Output debug logs to VS Code Developer Tools console (default: true)
     };
 }
 

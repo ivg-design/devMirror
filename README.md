@@ -2,12 +2,14 @@
 
 **Capture browser console output using Chrome DevTools Protocol**
 
-[![Version](https://img.shields.io/badge/version-0.4.80-blue.svg)](CHANGELOG.md) [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign) [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.4.81-blue.svg)](CHANGELOG.md) [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign) [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
 DevMirror is a VS Code extension that captures browser console output to timestamped log files using Chrome DevTools Protocol (CDP) or Adobe CEF debugging.
 
-## Current Features (v0.4.80)
+## Current Features (v0.4.81)
 
+- **Complete Error Context** - All errors now include file name, line and column numbers
+- **Configurable Debug Logging** - Advanced CDP protocol debugging for troubleshooting
 - **Complete Console Capture** - Logs all console messages with formatted arrays/objects as foldable JSON
 - **Enhanced Formatting** - Arrays and objects display as multi-line, indented JSON for better readability
 - **Console.table() Support** - Displays as formatted ASCII tables with all object properties as columns
@@ -97,6 +99,39 @@ Logs are written to `./devmirror-logs/` folder with timestamps.
 | autoOpenBrowser | boolean | Open browser in CEF mode | false |
 | captureDeprecationWarnings | boolean | Capture browser warnings | true |
 | cliPath | string | Path to CLI (auto-managed) | Auto-updated |
+| debug | object | Debug configuration | See below |
+
+### Debug Configuration
+
+DevMirror includes powerful debug logging to help diagnose CDP protocol issues. Add to `devmirror.config.json`:
+
+```json
+{
+  "outputDir": "./devmirror-logs",
+  "mode": "cdp",
+  "url": "http://localhost:3000",
+  "debug": {
+    "enabled": true,
+    "logExceptions": true,     // Log raw Runtime.exceptionThrown events
+    "logConsoleAPI": true,      // Log raw Runtime.consoleAPICalled events
+    "logLogEntries": true,      // Log raw Log.entryAdded events
+    "logRawCDP": false,         // Log ALL CDP traffic (verbose!)
+    "logToFile": true,          // Write debug to current.log file
+    "logToConsole": false       // Output to terminal (default: true)
+  }
+}
+```
+
+**Debug Options:**
+- `enabled`: Master switch for debug logging
+- `logExceptions`: Capture raw exception data from CDP
+- `logConsoleAPI`: Capture raw console API calls
+- `logLogEntries`: Capture browser log entries
+- `logRawCDP`: Log ALL CDP protocol traffic (very verbose)
+- `logToFile`: Save debug output to current.log
+- `logToConsole`: Show debug in terminal where DevMirror runs
+
+Debug messages are prefixed with `[DEVMIRROR:]` to distinguish from application debug output.
 
 ## Log Output Format
 

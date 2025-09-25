@@ -22,18 +22,25 @@ export class ConsoleEventHandler {
                 (category === 'cdp' && debugConfig.logRawCDP);
 
             if (shouldLog) {
-                const timestamp = new Date().toISOString();
-                const output = `[${timestamp}] [DEBUG:${category.toUpperCase()}] ${message}`;
-                console.log(output);
-                if (data) {
-                    console.log(JSON.stringify(data, null, 2));
+                // Default logToConsole to true if not specified
+                const logToConsole = debugConfig.logToConsole !== false;
+
+                // Output to console if enabled (default behavior)
+                if (logToConsole) {
+                    const timestamp = new Date().toISOString();
+                    const output = `[${timestamp}] [DEBUG:${category.toUpperCase()}] ${message}`;
+                    console.log(output);
+                    if (data) {
+                        console.log(JSON.stringify(data, null, 2));
+                    }
                 }
 
                 // Optionally write to debug file
                 if (debugConfig.logToFile && this.logWriter) {
+                    // Use a distinct prefix for DevMirror's internal debug messages
                     this.logWriter.write({
                         type: 'debug',
-                        message: `[${category.toUpperCase()}] ${message}\n${data ? JSON.stringify(data, null, 2) : ''}`,
+                        message: `[DEVMIRROR:${category.toUpperCase()}] ${message}${data ? '\n' + JSON.stringify(data, null, 2).split('\n').map(line => '                             ' + line).join('\n') : ''}`,
                         timestamp: Date.now()
                     });
                 }
@@ -126,16 +133,18 @@ export class ConsoleEventHandler {
             }
         }
 
-        // Try to extract file and line info from exception object
+        // Try to extract file and line info - it's directly on details, not exceptionDetails!
+        // CDP uses 0-based line numbers, but browsers display 1-based, so add 1
         let fileInfo = '';
-        if (details.exceptionDetails) {
-            const exDetails = details.exceptionDetails;
-            if (exDetails.url && exDetails.lineNumber !== undefined) {
-                const fileName = exDetails.url.split('/').pop();
-                fileInfo = ` (${fileName}:${exDetails.lineNumber}:${exDetails.columnNumber || 0})`;
-            } else if (exDetails.scriptId && exDetails.lineNumber !== undefined) {
-                fileInfo = ` (script:${exDetails.scriptId}:${exDetails.lineNumber}:${exDetails.columnNumber || 0})`;
-            }
+        if (details.url && details.lineNumber !== undefined) {
+            const fileName = details.url.split('/').pop();
+            const lineNumber = details.lineNumber + 1; // Convert from 0-based to 1-based
+            const columnNumber = (details.columnNumber || 0) + 1; // Columns are also 0-based
+            fileInfo = ` (${fileName}:${lineNumber}:${columnNumber})`;
+        } else if (details.scriptId && details.lineNumber !== undefined) {
+            const lineNumber = details.lineNumber + 1;
+            const columnNumber = (details.columnNumber || 0) + 1;
+            fileInfo = ` (script:${details.scriptId}:${lineNumber}:${columnNumber})`;
         }
 
         if (fileInfo) {

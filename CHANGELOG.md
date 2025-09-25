@@ -4,17 +4,21 @@ All notable changes to the DevMirror VS Code extension will be documented in thi
 
 ## [0.4.81] - 2025-09-25
 
+### Fixed
+- **Error Context Missing**: Syntax errors now properly display file name and line number (e.g., "TButtonLit.js:8:1")
+  - Fixed extraction of file/line info from Runtime.exceptionThrown CDP events
+  - Corrected 0-based to 1-based line number conversion to match browser display
+
 ### Added
-- **Configurable Debug Logging**: Added comprehensive debug configuration to help diagnose CDP protocol issues
-  - New debug configuration in devmirror.config.json with categories: logRawCDP, logExceptions, logConsoleAPI, logLogEntries
-  - Debug logging at CDP protocol level for Runtime.exceptionThrown and Log.entryAdded events
-  - Debug output to VS Code console for troubleshooting error context capture
-- **Enhanced Error Context**: Improved extraction of file and line information from multiple CDP event locations
-  - Added file:line extraction from Log.entryAdded events
-  - Enhanced Runtime.exceptionThrown handling to capture all available context
+- **Configurable Debug Logging**: Comprehensive debug system for diagnosing CDP protocol issues
+  - New debug configuration options: logExceptions, logConsoleAPI, logLogEntries, logRawCDP
+  - Optional logToFile to save debug output to current.log
+  - Optional logToConsole (default: true) to control terminal output
+  - Distinct [DEVMIRROR:DEBUG] prefix to differentiate from application debug messages
 
 ### Changed
-- ConsoleEventHandler now includes configurable debug logging methods
+- Debug messages now clearly labeled with [DEVMIRROR:] prefix to distinguish from app debug output
+- ConsoleEventHandler includes configurable debug logging methods
 - CDPManager adds raw CDP event logging when debug mode is enabled
 
 ## [0.4.80] - 2025-09-25
