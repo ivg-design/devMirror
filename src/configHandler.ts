@@ -14,6 +14,14 @@ export interface DevMirrorConfig {
         maxPerSecond: number;
         suppressAfter: number;
     };
+    debug?: {
+        enabled: boolean;
+        logRawCDP?: boolean;  // Log raw CDP data for debugging
+        logExceptions?: boolean;  // Log detailed exception data
+        logConsoleAPI?: boolean;  // Log raw console API calls
+        logLogEntries?: boolean;  // Log raw Log.entryAdded events
+        logToFile?: boolean;  // Save debug logs to a separate file
+    };
 }
 
 export class ConfigHandler {
@@ -29,6 +37,14 @@ export class ConfigHandler {
         throttle: {
             maxPerSecond: 100,
             suppressAfter: 100
+        },
+        debug: {
+            enabled: false,  // Set to true to enable debug logging
+            logRawCDP: false,  // Log all raw CDP data
+            logExceptions: false,  // Log detailed exception data
+            logConsoleAPI: false,  // Log raw console API calls
+            logLogEntries: false,  // Log raw Log.entryAdded events
+            logToFile: false  // Save debug logs to debug.log
         }
     };
 

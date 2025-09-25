@@ -2,6 +2,21 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.81] - 2025-09-25
+
+### Added
+- **Configurable Debug Logging**: Added comprehensive debug configuration to help diagnose CDP protocol issues
+  - New debug configuration in devmirror.config.json with categories: logRawCDP, logExceptions, logConsoleAPI, logLogEntries
+  - Debug logging at CDP protocol level for Runtime.exceptionThrown and Log.entryAdded events
+  - Debug output to VS Code console for troubleshooting error context capture
+- **Enhanced Error Context**: Improved extraction of file and line information from multiple CDP event locations
+  - Added file:line extraction from Log.entryAdded events
+  - Enhanced Runtime.exceptionThrown handling to capture all available context
+
+### Changed
+- ConsoleEventHandler now includes configurable debug logging methods
+- CDPManager adds raw CDP event logging when debug mode is enabled
+
 ## [0.4.80] - 2025-09-25
 
 ### Fixed

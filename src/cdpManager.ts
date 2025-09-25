@@ -254,6 +254,10 @@ export class CDPManager {
         });
 
         this.client.on('Runtime.exceptionThrown', (event: any) => {
+            // Debug log the raw CDP event if debug is enabled
+            if (this.config.debug?.enabled && this.config.debug?.logExceptions) {
+                console.log('[DevMirror Debug] Raw Runtime.exceptionThrown event:', JSON.stringify(event, null, 2));
+            }
             this.consoleHandler.handleExceptionThrown(event.exceptionDetails);
         });
 
@@ -290,8 +294,11 @@ export class CDPManager {
         });
 
         this.client.on('Log.entryAdded', (event: any) => {
+            // Debug log the raw CDP event if debug is enabled
+            if (this.config.debug?.enabled && this.config.debug?.logLogEntries) {
+                console.log('[DevMirror Debug] Raw Log.entryAdded event:', JSON.stringify(event, null, 2));
+            }
             this.consoleHandler.handleLogEntry(event);
-
         });
 
 

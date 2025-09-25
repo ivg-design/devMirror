@@ -4,10 +4,41 @@ import { DevMirrorConfig } from '../configHandler';
 export class ConsoleEventHandler {
     private logWriter: LogWriter;
     private config: DevMirrorConfig;
+    private debugLog: (category: string, message: string, data?: any) => void;
 
     constructor(logWriter: LogWriter, config: DevMirrorConfig) {
         this.logWriter = logWriter;
         this.config = config;
+
+        // Setup debug logging
+        this.debugLog = (category: string, message: string, data?: any) => {
+            if (!this.config.debug?.enabled) return;
+
+            const debugConfig = this.config.debug;
+            const shouldLog =
+                (category === 'exception' && debugConfig.logExceptions) ||
+                (category === 'console' && debugConfig.logConsoleAPI) ||
+                (category === 'log' && debugConfig.logLogEntries) ||
+                (category === 'cdp' && debugConfig.logRawCDP);
+
+            if (shouldLog) {
+                const timestamp = new Date().toISOString();
+                const output = `[${timestamp}] [DEBUG:${category.toUpperCase()}] ${message}`;
+                console.log(output);
+                if (data) {
+                    console.log(JSON.stringify(data, null, 2));
+                }
+
+                // Optionally write to debug file
+                if (debugConfig.logToFile && this.logWriter) {
+                    this.logWriter.write({
+                        type: 'debug',
+                        message: `[${category.toUpperCase()}] ${message}\n${data ? JSON.stringify(data, null, 2) : ''}`,
+                        timestamp: Date.now()
+                    });
+                }
+            }
+        };
     }
 
     /**
@@ -18,6 +49,9 @@ export class ConsoleEventHandler {
             console.log('   ⚠️ LogWriter not ready for console event');
             return;
         }
+
+        // Debug logging for raw console API data
+        this.debugLog('console', 'Raw Runtime.consoleAPICalled data', params);
 
         try {
             const args = params.args || [];
@@ -78,6 +112,9 @@ export class ConsoleEventHandler {
     handleExceptionThrown(details: any): void {
         if (!this.logWriter) return;
 
+        // Debug logging for raw exception data
+        this.debugLog('exception', 'Raw Runtime.exceptionThrown data', details);
+
         const exception = details.exception;
         let message = 'Uncaught exception';
 
@@ -87,6 +124,22 @@ export class ConsoleEventHandler {
             } else if (exception.value) {
                 message = String(exception.value);
             }
+        }
+
+        // Try to extract file and line info from exception object
+        let fileInfo = '';
+        if (details.exceptionDetails) {
+            const exDetails = details.exceptionDetails;
+            if (exDetails.url && exDetails.lineNumber !== undefined) {
+                const fileName = exDetails.url.split('/').pop();
+                fileInfo = ` (${fileName}:${exDetails.lineNumber}:${exDetails.columnNumber || 0})`;
+            } else if (exDetails.scriptId && exDetails.lineNumber !== undefined) {
+                fileInfo = ` (script:${exDetails.scriptId}:${exDetails.lineNumber}:${exDetails.columnNumber || 0})`;
+            }
+        }
+
+        if (fileInfo) {
+            message += fileInfo;
         }
 
         // Add stack trace if available
@@ -118,6 +171,8 @@ export class ConsoleEventHandler {
         const level = entry.level || 'verbose';
         const source = entry.source || 'other';
 
+        // Debug logging for raw Log.entryAdded events
+        this.debugLog('logEntries', 'Log.entryAdded raw data:', JSON.stringify(params, null, 2));
 
         // Skip certain log sources to avoid noise
         if (source === 'security') {
@@ -142,8 +197,15 @@ export class ConsoleEventHandler {
 
         const type = typeMap[level] || 'console';
 
-        // Build message with stack trace if available
-        let fullMessage = `[${source.toUpperCase()}] ${entry.text}`;
+        // Extract file and line information if available
+        let fileInfo = '';
+        if (entry.url && entry.lineNumber !== undefined) {
+            const fileName = entry.url.split('/').pop() || 'unknown';
+            fileInfo = ` (${fileName}:${entry.lineNumber}:${entry.columnNumber || 0})`;
+        }
+
+        // Build message with file info and stack trace if available
+        let fullMessage = `[${source.toUpperCase()}] ${entry.text}${fileInfo}`;
 
         // Add stack trace for Log.entryAdded events (similar to Runtime.consoleAPICalled)
         if (entry.stackTrace?.callFrames?.length > 0) {

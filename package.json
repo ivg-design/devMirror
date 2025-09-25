@@ -3,7 +3,7 @@
   "displayName": "DevMirror",
   "publisher": "IVGDesign",
   "description": "Capture 100% of browser console output using Chrome DevTools Protocol",
-  "version": "0.4.80",
+  "version": "0.4.81",
   "keywords": [
     "console",
     "logging",
@@ -16,7 +16,6 @@
     "devtools protocol",
     "console capture"
   ],
-  "version": "0.4.80",
   "icon": "icon.png",
   "engines": {
     "vscode": "^1.104.0"
