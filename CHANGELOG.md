@@ -2,6 +2,38 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.79] - 2025-09-25
+
+### Fixed
+- **Console.table() Formatting**: Tables now display with proper ASCII box-drawing characters and all object properties as columns
+- **Array Expansion**: Arrays of objects in console.table() now show full nested object data instead of just "Object" placeholders
+- **Table Alignment**: Added "console.table() output" label and fixed indentation for proper alignment in log files
+- **CDP Preview Handling**: Fixed buildObjectFromPreview to prioritize valuePreview data over placeholder values
+
+### Changed
+- Console.table() output now displays as properly formatted ASCII tables with all columns
+- Improved object reconstruction from Chrome DevTools Protocol preview data
+- Cleaned up debug logging from ConsoleEventHandler
+
+## [0.4.78] - 2025-09-25 (Unreleased)
+
+### Fixed
+- **Object Reconstruction**: Fixed buildObjectFromPreview to correctly process valuePreview data instead of using "Object" placeholder values
+
+### Added
+- Debug logging to understand CDP preview data structure (removed in 0.4.79)
+
+## [0.4.77] - 2025-09-25 (Unreleased)
+
+### Added
+- **Console.table() Detection**: Initial implementation to detect and format console.table() calls
+- **ASCII Table Formatting**: Added formatAsASCIITable() method with Unicode box-drawing characters
+- Debug logging for CDP console.table() data analysis
+
+### Changed
+- Modified ConsoleEventHandler to handle console.table() type specially
+- Enhanced formatTableData() and buildObjectFromPreview() methods
+
 ## [0.4.76] - 2025-09-25
 
 ### Fixed

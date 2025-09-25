@@ -18,6 +18,7 @@ Complete release process for DevMirror VS Code extension.
   - Add any new features to feature list
 
 ### 3. Update Wiki
+- [ ] Update `wiki/` documentation with all changes of this new version
 - [ ] Update `wiki/_Sidebar.md` - change version at bottom
 - [ ] Update `wiki/_Footer.md` - change version number
 - [ ] Update `wiki/Home.md`:

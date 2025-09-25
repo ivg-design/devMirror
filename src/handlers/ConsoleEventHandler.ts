@@ -34,8 +34,13 @@ export class ConsoleEventHandler {
                 }
             }
 
-            // Convert all arguments to strings
-            const message = this.formatArguments(args);
+            // Special handling for console.table()
+            let message = '';
+            if (type === 'table' && args.length > 0) {
+                message = 'console.table() output\n' + this.formatTableData(args[0]);
+            } else {
+                message = this.formatArguments(args);
+            }
 
             // Add full stack trace if available - capture for ALL messages to match browser behavior
             let fullMessage = source + message;
@@ -170,37 +175,18 @@ export class ConsoleEventHandler {
             // Handle objects with preview (synchronous)
             if (arg.type === 'object' && arg.preview?.properties) {
                 // Build a proper object structure from preview
-                const obj: any = {};
-                for (const prop of arg.preview.properties) {
-                    // For array indices, use numeric keys
-                    const key = /^\d+$/.test(prop.name) ? parseInt(prop.name) : prop.name;
-
-                    // Handle different property types
-                    if (prop.value !== undefined) {
-                        obj[key] = prop.value;
-                    } else if (prop.type === 'object') {
-                        // Nested object - show type and className if available
-                        obj[key] = prop.subtype || prop.className || 'Object';
-                    } else {
-                        obj[key] = prop.type;
-                    }
-                }
+                const obj = this.buildObjectFromPreview(arg.preview);
 
                 // Format as indented JSON
                 try {
                     const formatted = JSON.stringify(obj, null, 2);
-                    const lines = formatted.split('\n');
-                    // Add 2 spaces to ALL lines except first for proper indentation
-                    const indented = lines.map((line, i) => {
-                        return i === 0 ? line : '  ' + line;
-                    }).join('\n');
 
                     // Add class name prefix if it's not a plain object or array
                     if (arg.className && arg.className !== 'Object' && arg.className !== 'Array') {
-                        return `${arg.className} ${indented}`;
+                        return `${arg.className} ${formatted}`;
                     }
 
-                    return indented + (arg.preview.overflow ? '\n  // ... more items' : '');
+                    return formatted;
                 } catch {
                     // Fallback to single line if formatting fails
                     const props = arg.preview.properties
@@ -219,13 +205,7 @@ export class ConsoleEventHandler {
                     try {
                         // Parse and re-stringify with proper indentation
                         const obj = JSON.parse(arg.description);
-                        const formatted = JSON.stringify(obj, null, 2);
-                        const lines = formatted.split('\n');
-                        // Add 2 spaces to ALL lines except first for proper indentation
-                        const indented = lines.map((line, i) => {
-                            return i === 0 ? line : '  ' + line;
-                        }).join('\n');
-                        return indented;
+                        return JSON.stringify(obj, null, 2);
                     } catch {
                         // If parsing fails, return as-is
                         return arg.description;
@@ -275,5 +255,215 @@ export class ConsoleEventHandler {
                 return `    at ${functionName} (${fileName}:${lineNumber}:${columnNumber})`;
             })
             .join('\n');
+    }
+
+    /**
+     * Format table data for console.table() calls
+     */
+    private formatTableData(arg: any): string {
+        try {
+            // Get the actual data from the argument
+            let data: any;
+            if (arg.preview?.properties) {
+                // Build actual object from preview
+                data = this.buildObjectFromPreview(arg.preview);
+            } else if (arg.value !== undefined) {
+                data = arg.value;
+            } else if (arg.description) {
+                try {
+                    data = JSON.parse(arg.description);
+                } catch {
+                    return arg.description;
+                }
+            } else {
+                return '[Table data not available]';
+            }
+
+            // Convert to array if it's an object with numeric keys
+            if (!Array.isArray(data) && typeof data === 'object') {
+                const keys = Object.keys(data);
+                const isArrayLike = keys.every(k => /^\d+$/.test(k));
+                if (isArrayLike) {
+                    const arr = [];
+                    for (const key of keys.sort((a, b) => parseInt(a) - parseInt(b))) {
+                        arr.push(data[key]);
+                    }
+                    data = arr;
+                }
+            }
+
+            // Format as ASCII table
+            if (Array.isArray(data) && data.length > 0) {
+                return this.formatAsASCIITable(data);
+            } else if (typeof data === 'object' && data !== null) {
+                // Single object - format as a simple table
+                return this.formatAsASCIITable([data]);
+            }
+
+            return JSON.stringify(data, null, 2);
+        } catch (error) {
+            return `[Error formatting table: ${error}]`;
+        }
+    }
+
+    /**
+     * Build an object from CDP preview data
+     */
+    private buildObjectFromPreview(preview: any): any {
+        const result: any = preview.subtype === 'array' ? [] : {};
+
+        if (preview.properties) {
+            for (const prop of preview.properties) {
+                const key = /^\d+$/.test(prop.name) ? parseInt(prop.name) : prop.name;
+
+                // IMPORTANT: Check for valuePreview FIRST, before using value
+                // When value is "Object", it's just a placeholder - the real data is in valuePreview
+                if (prop.valuePreview) {
+                    result[key] = this.buildObjectFromPreview(prop.valuePreview);
+                } else if (prop.value !== undefined && prop.value !== 'Object') {
+                    result[key] = prop.value;
+                } else if (prop.type === 'object') {
+                    // For nested objects without valuePreview
+                    if (prop.preview) {
+                        // Try to build from the preview property directly
+                        result[key] = this.buildObjectFromPreview(prop.preview);
+                    } else {
+                        // Build a partial representation from available info
+                        const obj: any = {};
+                        if (prop.className) obj._type = prop.className;
+                        if (prop.description) obj._desc = prop.description;
+                        result[key] = obj;
+                    }
+                } else {
+                    // For primitive types without a value, use the type
+                    result[key] = prop.type;
+                }
+            }
+        }
+
+        // If there's overflow, add a marker
+        if (preview.overflow) {
+            result['...'] = 'more items';
+        }
+
+        return result;
+    }
+
+    /**
+     * Format data as an ASCII table
+     */
+    private formatAsASCIITable(data: any[]): string {
+        if (!data || data.length === 0) return '(empty)';
+
+        // Collect all unique keys from all objects
+        const allKeys = new Set<string>(['(index)']);
+        for (const item of data) {
+            if (typeof item === 'object' && item !== null) {
+                Object.keys(item).forEach(key => allKeys.add(key));
+            }
+        }
+
+        const columns = Array.from(allKeys);
+        const rows: string[][] = [];
+
+        // Build rows
+        for (let i = 0; i < data.length; i++) {
+            const row: string[] = [String(i)]; // Index column
+            const item = data[i];
+
+            for (let j = 1; j < columns.length; j++) {
+                const key = columns[j];
+                if (typeof item === 'object' && item !== null && key in item) {
+                    const value = item[key];
+                    if (value === null) {
+                        row.push('null');
+                    } else if (value === undefined) {
+                        row.push('undefined');
+                    } else if (typeof value === 'boolean') {
+                        row.push(String(value));
+                    } else if (typeof value === 'object') {
+                        // For objects, try to get a meaningful representation
+                        if (value.element) {
+                            row.push(value.element);
+                        } else {
+                            row.push('[Object]');
+                        }
+                    } else {
+                        row.push(String(value));
+                    }
+                } else {
+                    row.push('');
+                }
+            }
+            rows.push(row);
+        }
+
+        // Calculate column widths
+        const widths = columns.map((col, i) => {
+            let maxWidth = col.length;
+            for (const row of rows) {
+                if (row[i]) {
+                    maxWidth = Math.max(maxWidth, String(row[i]).length);
+                }
+            }
+            return Math.min(maxWidth, 30); // Cap at 30 chars
+        });
+
+        // Build the table
+        let table = '';
+
+        // Header separator
+        table += '┌' + widths.map(w => '─'.repeat(w + 2)).join('┬') + '┐\n';
+
+        // Header
+        table += '│';
+        for (let i = 0; i < columns.length; i++) {
+            const col = columns[i];
+            const width = widths[i];
+            table += ' ' + col.padEnd(width) + ' │';
+        }
+        table += '\n';
+
+        // Header-body separator
+        table += '├' + widths.map(w => '─'.repeat(w + 2)).join('┼') + '┤\n';
+
+        // Rows
+        for (const row of rows) {
+            table += '│';
+            for (let i = 0; i < columns.length; i++) {
+                const val = row[i] || '';
+                const width = widths[i];
+                const truncated = val.length > width ? val.substring(0, width - 3) + '...' : val;
+                table += ' ' + truncated.padEnd(width) + ' │';
+            }
+            table += '\n';
+        }
+
+        // Bottom border
+        table += '└' + widths.map(w => '─'.repeat(w + 2)).join('┴') + '┘';
+
+        // Also include expanded array view with full object content
+        table += '\n▸ Array(' + data.length + ')\n';
+        for (let i = 0; i < Math.min(data.length, 100); i++) {  // Show more items
+            const item = data[i];
+            if (typeof item === 'object' && item !== null) {
+                // Format the object with proper indentation for folding
+                const formatted = JSON.stringify(item, null, 2);
+                const lines = formatted.split('\n');
+                // First line with index
+                table += `  ${i}: ${lines[0]}\n`;
+                // Rest of the lines with proper indentation
+                for (let j = 1; j < lines.length; j++) {
+                    table += `    ${lines[j]}\n`;
+                }
+            } else {
+                table += `  ${i}: ${item}\n`;
+            }
+        }
+        if (data.length > 100) {
+            table += `  ... ${data.length - 100} more items\n`;
+        }
+
+        return table;
     }
 }
