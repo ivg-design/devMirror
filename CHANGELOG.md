@@ -2,6 +2,18 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
+## [0.4.76] - 2025-09-25
+
+### Fixed
+- **Array/Object Formatting**: Arrays and objects with preview data now display as multi-line, indented JSON
+- **Folding Chevrons**: Fixed double-indentation of stack traces that prevented folding chevrons from appearing
+- **Console Output**: Improved readability with proper JSON formatting for complex data structures
+- **Stack Trace Format**: Preserved original formatting to maintain VS Code's folding functionality
+
+### Changed
+- Enhanced ConsoleEventHandler to format object previews as proper JSON
+- Updated LogWriter to detect and preserve pre-formatted stack traces
+
 ## [0.4.75] - 2025-09-24
 
 ### Fixed
