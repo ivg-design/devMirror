@@ -142,6 +142,19 @@ export class CDPManager {
             // Ensure the profile directory exists
             if (!fs.existsSync(this.profileDir)) {
                 fs.mkdirSync(this.profileDir, { recursive: true });
+            } else {
+                // Clean up any problematic lock files from previous runs
+                const lockFiles = ['SingletonLock', 'SingletonSocket', 'SingletonCookie'];
+                for (const lockFile of lockFiles) {
+                    const lockPath = path.join(this.profileDir, lockFile);
+                    if (fs.existsSync(lockPath)) {
+                        try {
+                            fs.unlinkSync(lockPath);
+                        } catch {
+                            // Ignore errors - file might be in use
+                        }
+                    }
+                }
             }
 
             // Optional: Clean up stale profiles (disabled by default to avoid delays)
@@ -160,7 +173,26 @@ export class CDPManager {
                     '--start-maximized',  // Start Chrome maximized
                     '--disable-background-timer-throttling',
                     '--disable-backgrounding-occluded-windows',
-                    '--disable-renderer-backgrounding'
+                    '--disable-renderer-backgrounding',
+                    // Prevent profile error dialogs
+                    '--no-first-run',
+                    '--no-default-browser-check',
+                    '--disable-default-apps',
+                    '--disable-popup-blocking',
+                    '--disable-translate',
+                    '--disable-extensions',
+                    '--disable-sync',
+                    '--disable-features=ChromeWhatsNewUI',
+                    '--disable-features=PrivacySandboxSettings4',
+                    '--no-service-autorun',
+                    '--password-store=basic',
+                    '--disable-features=Translate',
+                    '--disable-features=PasswordImport',
+                    '--disable-features=PasswordGeneration',
+                    '--disable-features=SafeBrowsing',
+                    // Force new profile initialization
+                    '--force-first-run=false',
+                    '--silent-debugger-extension-api'
                 ]
             });
 

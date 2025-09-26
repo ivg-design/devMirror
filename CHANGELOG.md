@@ -2,13 +2,17 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
-## [0.4.82] - 2025-09-25 (UNRELEASED)
+## [0.4.82] - 2025-09-26 (UNRELEASED)
 
 ### Fixed
 - **Multiple Instance Support**: Fixed SingletonLock error preventing multiple DevMirror instances
   - Each project now uses a unique Chrome profile directory
   - Profile names include project name, path hash, and port for isolation
   - Enables running DevMirror in multiple projects simultaneously
+- **Chrome Profile Errors**: Fixed "Something went wrong when opening your profile" dialogs
+  - Added Chrome flags to disable first-run experience and profile checks
+  - Clean up stale lock files before launching Chrome
+  - Disabled unnecessary Chrome features that cause profile conflicts
 
 ### Added
 - **Per-Project Profile Isolation**: Chrome profiles are now isolated per project
