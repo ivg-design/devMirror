@@ -2,12 +2,14 @@
 
 **Capture browser console output using Chrome DevTools Protocol**
 
-[![Version](https://img.shields.io/badge/version-0.4.81-blue.svg)](CHANGELOG.md) [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign) [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.4.82-blue.svg)](CHANGELOG.md) [![Publisher](https://img.shields.io/badge/publisher-IVGDesign-green.svg)](https://marketplace.visualstudio.com/publishers/IVGDesign) [![License](https://img.shields.io/badge/license-MIT-lightgrey.svg)](LICENSE)
 
 DevMirror is a VS Code extension that captures browser console output to timestamped log files using Chrome DevTools Protocol (CDP) or Adobe CEF debugging.
 
-## Current Features (v0.4.81)
+## Current Features (v0.4.82)
 
+- **Multiple Instance Support** - Run DevMirror in multiple projects simultaneously without conflicts
+- **Per-Project Chrome Profiles** - Each project gets its own isolated Chrome profile
 - **Complete Error Context** - All errors now include file name, line and column numbers
 - **Configurable Debug Logging** - Advanced CDP protocol debugging for troubleshooting
 - **Complete Console Capture** - Logs all console messages with formatted arrays/objects as foldable JSON

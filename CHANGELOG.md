@@ -2,7 +2,7 @@
 
 All notable changes to the DevMirror VS Code extension will be documented in this file.
 
-## [0.4.82] - 2025-09-26 (UNRELEASED)
+## [0.4.82] - 2024-11-26
 
 ### Fixed
 - **Multiple Instance Support**: Fixed SingletonLock error preventing multiple DevMirror instances
