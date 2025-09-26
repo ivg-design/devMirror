@@ -33,6 +33,7 @@ export class CDPManager {
     private reconnectAttempts: number = 0;
     private maxReconnectAttempts: number = 10;
     private reconnectDelay: number = 5000; // 5 seconds between attempts
+    private profileDir: string | null = null;  // Track profile directory for cleanup
 
     // Configuration
     private config!: DevMirrorConfig;
@@ -130,24 +131,29 @@ export class CDPManager {
         console.log('🟢 DevMirror Active');
         console.log(`├─ Chrome launching (CDP connecting)...`);
         console.log(`├─ Logging to: ${config.outputDir}`);
-        console.log(`└─ Dev server: ${targetUrl}`);
+        console.log(`├─ Dev server: ${targetUrl}`);
 
         try {
             const executablePath = config.chromePath || this.findChrome();
 
-            // Create a persistent user data directory for DevMirror
-            const userDataDir = path.join(os.homedir(), '.devmirror', 'chrome-profile');
+            // Generate unique profile directory for this project instance
+            this.profileDir = this.generateProfileDirectory(config);
 
-            // Ensure the directory exists
-            if (!fs.existsSync(userDataDir)) {
-                fs.mkdirSync(userDataDir, { recursive: true });
+            // Ensure the profile directory exists
+            if (!fs.existsSync(this.profileDir)) {
+                fs.mkdirSync(this.profileDir, { recursive: true });
             }
+
+            // Optional: Clean up stale profiles (disabled by default to avoid delays)
+            // await this.cleanupStaleProfiles();
+
+            console.log(`└─ Chrome profile: ${path.basename(this.profileDir)}`);
 
             this.browser = await this.puppeteer.launch({
                 headless: false,
                 devtools: true,
                 executablePath: executablePath,
-                userDataDir: userDataDir,  // Persistent profile that remembers DevTools settings
+                userDataDir: this.profileDir,  // Project-specific profile directory
                 defaultViewport: null,  // Use full browser window instead of fixed viewport
                 args: [
                     '--auto-open-devtools-for-tabs',
@@ -225,6 +231,74 @@ export class CDPManager {
             return 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
         } else {
             return 'google-chrome';
+        }
+    }
+
+    /**
+     * Generate a unique profile directory for this project instance
+     * Uses project path and URL to create isolation between different projects
+     */
+    private generateProfileDirectory(config: DevMirrorConfig): string {
+        const projectPath = process.env.DEVMIRROR_PKG_PATH || process.cwd();
+        const projectName = path.basename(projectPath);
+
+        // Extract port from URL for additional uniqueness
+        let port = '0000';
+        if (config.url) {
+            const urlMatch = config.url.match(/:(\d+)/);
+            if (urlMatch) {
+                port = urlMatch[1];
+            }
+        }
+
+        // Create a short hash of the full project path for uniqueness
+        const pathHash = crypto.createHash('md5').update(projectPath).digest('hex').substring(0, 8);
+
+        // Create profile directory name: projectname-hash-port
+        const profileName = `${projectName}-${pathHash}-${port}`.replace(/[^a-zA-Z0-9-]/g, '-');
+
+        // Create the full path
+        const profilesDir = path.join(os.homedir(), '.devmirror', 'profiles');
+        const profileDir = path.join(profilesDir, profileName);
+
+        // Ensure the profiles directory exists
+        if (!fs.existsSync(profilesDir)) {
+            fs.mkdirSync(profilesDir, { recursive: true });
+        }
+
+        return profileDir;
+    }
+
+    /**
+     * Clean up stale profile directories (optional - for future enhancement)
+     * Can be called periodically to remove unused profiles
+     */
+    private async cleanupStaleProfiles(): Promise<void> {
+        try {
+            const profilesDir = path.join(os.homedir(), '.devmirror', 'profiles');
+            if (!fs.existsSync(profilesDir)) return;
+
+            const profiles = fs.readdirSync(profilesDir);
+            const now = Date.now();
+            const staleAge = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+            for (const profile of profiles) {
+                const profilePath = path.join(profilesDir, profile);
+                const lockFile = path.join(profilePath, 'SingletonLock');
+
+                // Skip if lock file exists (profile is in use)
+                if (fs.existsSync(lockFile)) continue;
+
+                // Check last modified time
+                const stats = fs.statSync(profilePath);
+                if (now - stats.mtimeMs > staleAge) {
+                    // Remove stale profile
+                    fs.rmSync(profilePath, { recursive: true, force: true });
+                    console.log(`🧹 Cleaned up stale profile: ${profile}`);
+                }
+            }
+        } catch (error) {
+            // Silently ignore cleanup errors
         }
     }
 
